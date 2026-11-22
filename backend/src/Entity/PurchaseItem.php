@@ -9,8 +9,8 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Item de uma compra: qual produto, quantidade e preços.
- * O totalPrice é gravado (quantidade × preço unitário) para manter o histórico fiel,
+ * Item de uma compra: qual produto, quantidade, preço e desconto.
+ * O totalPrice é gravado (quantidade × preço unitário − desconto) para manter o histórico fiel,
  * mesmo que o preço do produto mude depois.
  */
 #[ORM\Entity(repositoryClass: PurchaseItemRepository::class)]
@@ -39,7 +39,10 @@ class PurchaseItem
     #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Preço unitário do produto no momento da compra, em centavos'])]
     private int $unitPrice;
 
-    #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Preço total do item (quantidade × preço unitário), em centavos'])]
+    #[ORM\Column(type: Types::BIGINT, options: ['default' => 0, 'comment' => 'Desconto aplicado no item, em centavos'])]
+    private int $discount = 0;
+
+    #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Preço total do item (quantidade × preço unitário − desconto), em centavos'])]
     private int $totalPrice;
 
     public function getId(): ?int
@@ -91,6 +94,18 @@ class PurchaseItem
     public function setUnitPrice(int $unitPrice): static
     {
         $this->unitPrice = $unitPrice;
+
+        return $this;
+    }
+
+    public function getDiscount(): int
+    {
+        return $this->discount;
+    }
+
+    public function setDiscount(int $discount): static
+    {
+        $this->discount = $discount;
 
         return $this;
     }

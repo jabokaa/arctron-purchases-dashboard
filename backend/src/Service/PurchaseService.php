@@ -59,16 +59,20 @@ final class PurchaseService
                     ->setReferenceCode($input->referenceCode)
                     ->setCustomer($customer)
                     ->setSalesChannel($salesChannel)
-                    // Valores em centavos, gravados direto (coluna BIGINT)
-                    ->setAmount($input->amount)
-                    ->setDiscount($input->discount)
                     // A coluna não guarda fuso horário: grava sempre em UTC para não perder a hora real
                     ->setPurchasedAt($input->purchasedAt->setTimezone(new \DateTimeZone('UTC')))
                     ->setNotes($input->notes);
 
-                foreach ($this->buildItems($input->products, $salesChannel) as $item) {
+                $items = $this->buildItems($input->products, $salesChannel);
+
+                foreach ($items as $item) {
                     $purchase->addItem($item);
                 }
+
+                // Totais da compra = soma dos itens (o payload não envia esses valores)
+                $purchase
+                    ->setAmount(array_sum(array_map(static fn (PurchaseItem $item): int => $item->getTotalPrice(), $items)))
+                    ->setDiscount(array_sum(array_map(static fn (PurchaseItem $item): int => $item->getDiscount(), $items)));
 
                 // cascade: ['persist'] em Purchase::$items salva os itens junto
                 $this->em->persist($purchase);
@@ -110,7 +114,8 @@ final class PurchaseService
                 ->setProduct($resolvedProducts[$productInput->externalId])
                 ->setQuantity($productInput->quantity)
                 ->setUnitPrice($productInput->unitPrice)
-                ->setTotalPrice($productInput->quantity * $productInput->unitPrice);
+                ->setDiscount($productInput->discount)
+                ->setTotalPrice($productInput->quantity * $productInput->unitPrice - $productInput->discount);
         }
 
         return $items;

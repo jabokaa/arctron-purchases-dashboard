@@ -27,8 +27,8 @@ final class Version20261122020754 extends AbstractMigration
         $this->addSql('CREATE UNIQUE INDEX uniq_purchases_reference_code ON purchases (reference_code)');
         $this->addSql('COMMENT ON TABLE purchases IS \'Compras (pedidos) realizadas por clientes em um canal de venda\'');
         $this->addSql('COMMENT ON COLUMN purchases.reference_code IS \'Código único de referência do pedido\'');
-        $this->addSql('COMMENT ON COLUMN purchases.amount IS \'Valor total da compra em centavos\'');
-        $this->addSql('COMMENT ON COLUMN purchases.discount IS \'Valor de desconto aplicado na compra em centavos\'');
+        $this->addSql('COMMENT ON COLUMN purchases.amount IS \'Valor total da compra (soma do total dos itens), em centavos\'');
+        $this->addSql('COMMENT ON COLUMN purchases.discount IS \'Desconto total da compra (soma dos descontos dos itens), em centavos\'');
         $this->addSql('COMMENT ON COLUMN purchases.purchased_at IS \'Data e hora em que a compra foi realizada\'');
         $this->addSql('COMMENT ON COLUMN purchases.notes IS \'Observações livres sobre a compra\'');
         $this->addSql('COMMENT ON COLUMN purchases.created_at IS \'Data de criação do registro\'');

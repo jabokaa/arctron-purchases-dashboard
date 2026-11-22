@@ -15,6 +15,7 @@ use Doctrine\ORM\Mapping as ORM;
  * O referenceCode é o código único do pedido, usado para evitar duplicidade.
  *
  * Valores monetários são guardados em CENTAVOS como inteiro (BIGINT): 25010 = R$ 250,10.
+ * amount e discount são calculados pelo PurchaseService a partir dos itens (o payload não os envia).
  * Assim não há erro de arredondamento (float não é seguro para dinheiro).
  */
 #[ORM\Entity(repositoryClass: PurchaseRepository::class)]
@@ -45,10 +46,10 @@ class Purchase
     #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
     private SalesChannel $salesChannel;
 
-    #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Valor total da compra em centavos'])]
+    #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Valor total da compra (soma do total dos itens), em centavos'])]
     private int $amount;
 
-    #[ORM\Column(type: Types::BIGINT, options: ['default' => 0, 'comment' => 'Valor de desconto aplicado na compra em centavos'])]
+    #[ORM\Column(type: Types::BIGINT, options: ['default' => 0, 'comment' => 'Desconto total da compra (soma dos descontos dos itens), em centavos'])]
     private int $discount = 0;
 
     #[ORM\Column(options: ['comment' => 'Data e hora em que a compra foi realizada'])]

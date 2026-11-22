@@ -42,6 +42,11 @@ final class ProductInput
         #[Assert\PositiveOrZero(message: 'O valor unitário não pode ser negativo.')]
         #[Assert\LessThan(value: 1_000_000_000_000, message: 'O valor unitário é muito alto.')]
         public readonly ?int $unitPrice = null,
+
+        /** Desconto do item em centavos (sobre o total do item); é opcional e, quando não informado, vale 0 */
+        #[Assert\PositiveOrZero(message: 'O desconto do item não pode ser negativo.')]
+        #[Assert\LessThan(value: 1_000_000_000_000, message: 'O desconto do item é muito alto.')]
+        public readonly int $discount = 0,
     ) {
         // Normaliza para string: 123 → "123"
         $this->externalId = null === $externalId ? null : (string) $externalId;

@@ -9,8 +9,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * Corpo da requisição POST /api/purchases.
  *
- * Valores monetários (amount, discount, unit_price) chegam em CENTAVOS, como inteiros:
+ * Valores monetários vêm por item (unit_price, discount) em CENTAVOS, como inteiros:
  * 25000 = R$ 250,00. Assim não há erro de arredondamento de float.
+ * O valor total e o desconto total da compra são calculados a partir dos itens.
  *
  * Equivalente ao FormRequest do Laravel: descreve o formato esperado do JSON
  * e as regras de validação. O #[MapRequestPayload] no controller converte o JSON
@@ -28,17 +29,6 @@ final class PurchaseInput
         #[Assert\NotBlank(message: 'O código de referência é obrigatório.')]
         #[Assert\Length(max: 100, maxMessage: 'O código de referência deve ter no máximo {{ limit }} caracteres.')]
         public readonly ?string $referenceCode = null,
-
-        #[Assert\NotNull(message: 'O valor da compra é obrigatório.')]
-        /** Valor total da compra em centavos, ex.: 25000 = R$ 250,00 */
-        #[Assert\PositiveOrZero(message: 'O valor da compra não pode ser negativo.')]
-        #[Assert\LessThan(value: 1_000_000_000_000, message: 'O valor da compra é muito alto.')]
-        public readonly ?int $amount = null,
-
-        /** Desconto em centavos; é opcional e, quando não informado, vale 0 */
-        #[Assert\PositiveOrZero(message: 'O desconto não pode ser negativo.')]
-        #[Assert\LessThan(value: 1_000_000_000_000, message: 'O desconto é muito alto.')]
-        public readonly int $discount = 0,
 
         /** Data da compra em formato ISO 8601, ex.: 2026-11-21T14:30:00-03:00 */
         #[Assert\NotNull(message: 'A data da compra é obrigatória.')]

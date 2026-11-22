@@ -19,7 +19,7 @@ final class PurchaseOutput
 {
     /**
      * @param array{id: int|null, type: string, name: string, trade_name: string|null, email: string|null, document: string} $customer
-     * @param list<array{product_id: int|null, name: string, quantity: int, unit_price: int, total_price: int}> $items
+     * @param list<array{product_id: int|null, name: string, quantity: int, unit_price: int, discount: int, total_price: int}> $items
      */
     private function __construct(
         public readonly ?int $id,
@@ -61,6 +61,7 @@ final class PurchaseOutput
                     'name' => $item->getProduct()->getName(),
                     'quantity' => $item->getQuantity(),
                     'unit_price' => $item->getUnitPrice(),
+                    'discount' => $item->getDiscount(),
                     'total_price' => $item->getTotalPrice(),
                 ],
                 $purchase->getItems()->toArray(),
