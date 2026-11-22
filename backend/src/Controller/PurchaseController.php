@@ -6,7 +6,7 @@ namespace App\Controller;
 
 use App\Dto\PurchaseInput;
 use App\Dto\PurchaseOutput;
-use App\Service\PurchaseService;
+use App\Service\PurchaseServiceInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,7 +24,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class PurchaseController extends AbstractController
 {
     public function __construct(
-        private readonly PurchaseService $purchaseService,
+        private readonly PurchaseServiceInterface $purchaseService,
     ) {
     }
 

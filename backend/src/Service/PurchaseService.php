@@ -29,7 +29,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * Quando este service é chamado, o PurchaseInput já foi validado pelo #[MapRequestPayload]
  * (campos obrigatórios, CPF/CNPJ válido).
  */
-final class PurchaseService
+final class PurchaseService implements PurchaseServiceInterface
 {
     public function __construct(
         private readonly EntityManagerInterface $em,
