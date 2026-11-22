@@ -1,7 +1,7 @@
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import cbfLogo from '../../assets/cbf-logo.svg'
 import { AuthError, login, type User } from '../../services/auth'
-import './LoginPage.css'
 
 type FormErrors = {
   email?: string
@@ -10,7 +10,7 @@ type FormErrors = {
 
 const CURRENT_YEAR = new Date().getFullYear()
 
-const EMAIL_PATTERN =/^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
 function validate(email: string, password: string): FormErrors {
   const errors: FormErrors = {}
@@ -75,65 +75,91 @@ function LoginPage({ onLogin }: Props) {
   }
 
   return (
-    <div className="login">
-      <aside className="login__brand" aria-hidden="true">
-        <div className="login__brand-inner">
-          <img src={cbfLogo} alt="" className="login__brand-logo" />
-          <h2 className="login__brand-title">Painel de Compras</h2>
-          <p className="login__brand-text">
+    <div className="grid min-h-svh lg:grid-cols-2">
+      <aside
+        className="relative hidden overflow-hidden bg-navy-900 text-white lg:flex lg:items-center lg:justify-center"
+        aria-hidden="true"
+      >
+        <div className="absolute -top-32 -left-32 size-[28rem] rounded-full bg-navy-500/40 blur-3xl" />
+        <div className="absolute -right-24 -bottom-32 size-[26rem] rounded-full bg-pitch-500/30 blur-3xl" />
+        <div className="relative z-10 max-w-sm px-8 text-center">
+          <img
+            src={cbfLogo}
+            alt=""
+            className="mx-auto h-36 w-auto drop-shadow-2xl"
+          />
+          <h2 className="mt-10 text-3xl font-bold tracking-tight">
+            Painel de Compras
+          </h2>
+          <p className="mt-3 text-lg text-navy-100/80">
             Acompanhe pedidos, clientes e produtos em um só lugar.
           </p>
         </div>
-        <div className="login__stripe" />
+        <div className="absolute inset-x-0 bottom-0 h-2 bg-linear-to-r from-pitch-500 from-50% to-gold to-50%" />
       </aside>
 
-      <main className="login__main">
-        <div className="login__card">
+      <main className="flex items-center justify-center px-5 py-10">
+        <div className="w-full max-w-sm">
           <img
             src={cbfLogo}
             alt="Confederação Brasileira de Futebol"
-            className="login__logo"
+            className="mx-auto mb-8 h-16 w-auto lg:hidden"
           />
 
-          <header className="login__header">
-            <h1>Entrar</h1>
-            <p>Acesse sua conta para continuar.</p>
+          <header className="mb-8">
+            <h1 className="text-3xl font-bold tracking-tight text-navy-900">
+              Entrar
+            </h1>
+            <p className="mt-2 text-slate-500">
+              Acesse sua conta para continuar.
+            </p>
           </header>
 
           {formError && (
-            <div className="login__alert" role="alert">
+            <div className="alert alert-error mb-5" role="alert">
+              <AlertCircle className="mt-0.5 size-4 shrink-0" />
               {formError}
             </div>
           )}
 
-          <form className="login__form" onSubmit={handleSubmit} noValidate>
-            <div className="field">
-              <label htmlFor="email">E-mail</label>
-              <input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="seu.nome@cbf.com.br"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                aria-invalid={Boolean(errors.email)}
-                aria-describedby={errors.email ? 'email-error' : undefined}
-              />
+          <form className="space-y-5" onSubmit={handleSubmit} noValidate>
+            <div>
+              <label htmlFor="email" className="label">
+                E-mail
+              </label>
+              <div className="relative">
+                <Mail className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="seu.nome@cbf.com.br"
+                  className="input pl-10"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  aria-invalid={Boolean(errors.email)}
+                  aria-describedby={errors.email ? 'email-error' : undefined}
+                />
+              </div>
               {errors.email && (
-                <span id="email-error" className="field__error">
+                <span id="email-error" className="field-error">
                   {errors.email}
                 </span>
               )}
             </div>
 
-            <div className="field">
-              <label htmlFor="password">Senha</label>
-              <div className="field__password">
+            <div>
+              <label htmlFor="password" className="label">
+                Senha
+              </label>
+              <div className="relative">
+                <Lock className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-slate-400" />
                 <input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   placeholder="••••••••"
+                  className="input px-10"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   aria-invalid={Boolean(errors.password)}
@@ -143,45 +169,54 @@ function LoginPage({ onLogin }: Props) {
                 />
                 <button
                   type="button"
-                  className="field__toggle"
+                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 hover:text-slate-700"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
                 >
-                  {showPassword ? 'Ocultar' : 'Mostrar'}
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
                 </button>
               </div>
               {errors.password && (
-                <span id="password-error" className="field__error">
+                <span id="password-error" className="field-error">
                   {errors.password}
                 </span>
               )}
             </div>
 
-            <div className="login__options">
-              <label className="checkbox">
+            <div className="flex items-center justify-between text-sm">
+              <label className="flex items-center gap-2 text-slate-600 select-none">
                 <input
                   type="checkbox"
+                  className="size-4 rounded border-slate-300 accent-pitch-500"
                   checked={remember}
                   onChange={(e) => setRemember(e.target.checked)}
                 />
                 Lembrar de mim
               </label>
-              <a href="#" className="login__link">
+              <a
+                href="#"
+                className="font-medium text-navy-600 hover:text-navy-800 hover:underline"
+              >
                 Esqueci minha senha
               </a>
             </div>
 
             <button
               type="submit"
-              className="login__submit"
+              className="btn btn-primary w-full py-3"
               disabled={submitting}
             >
+              {submitting && <Loader2 className="size-4 animate-spin" />}
               {submitting ? 'Entrando…' : 'Entrar'}
             </button>
           </form>
 
-          <footer className="login__footer">
-            © {CURRENT_YEAR}Confederação Brasileira de Futebol
+          <footer className="mt-10 text-center text-xs text-slate-400">
+            © {CURRENT_YEAR} Confederação Brasileira de Futebol
           </footer>
         </div>
       </main>

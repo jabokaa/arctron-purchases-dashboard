@@ -6,7 +6,7 @@ Stack: **Symfony** (backend) · **PostgreSQL** (banco) · **RabbitMQ** (fila) ·
 
 ```
 backend/   Symfony 8 (Doctrine ORM, Messenger)
-frontend/  React + Vite + TypeScript
+frontend/  React + Vite + TypeScript + Tailwind CSS 4 (fonte Inter, ícones Lucide)
 docker-compose.yml
 ```
 

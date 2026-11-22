@@ -1,4 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from 'react'
+import { CircleAlert, ImagePlus, Loader2, Trash2, X } from 'lucide-react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type FormEvent,
+} from 'react'
 import { AuthError } from '../../services/auth'
 import {
   createProduct,
@@ -51,6 +60,7 @@ function ProductFormModal({ product, onClose, onSaved, onUnauthorized }: Props) 
   const [saved, setSaved] = useState<Product | null>(product)
   const [file, setFile] = useState<File | null>(null)
   const [removeImage, setRemoveImage] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [formError, setFormError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -61,7 +71,10 @@ function ProductFormModal({ product, onClose, onSaved, onUnauthorized }: Props) 
     nameRef.current?.focus()
   }, [])
 
-  const preview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file])
+  const preview = useMemo(
+    () => (file ? URL.createObjectURL(file) : null),
+    [file],
+  )
 
   useEffect(() => {
     return () => {
@@ -79,9 +92,7 @@ function ProductFormModal({ product, onClose, onSaved, onUnauthorized }: Props) 
     return () => document.removeEventListener('keydown', onKeyDown)
   }, [onClose, submitting, changed])
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const chosen = event.target.files?.[0] ?? null
-    event.target.value = ''
+  function chooseFile(chosen: File | undefined) {
     if (!chosen) return
 
     const problem = validateImage(chosen)
@@ -90,6 +101,17 @@ function ProductFormModal({ product, onClose, onSaved, onUnauthorized }: Props) 
 
     setFile(chosen)
     setRemoveImage(false)
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    chooseFile(event.target.files?.[0])
+    event.target.value = ''
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    setDragging(false)
+    if (!submitting) chooseFile(event.dataTransfer.files[0])
   }
 
   function clearImage() {
@@ -166,116 +188,160 @@ function ProductFormModal({ product, onClose, onSaved, onUnauthorized }: Props) 
 
   return (
     <div
-      className="modal"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-navy-950/60 p-4 backdrop-blur-sm"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !submitting)
           onClose(changed)
       }}
     >
       <div
-        className="modal__card"
+        className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="product-form-title"
       >
-        <h2 id="product-form-title">
-          {product ? 'Editar produto' : 'Novo produto'}
-        </h2>
+        <div className="flex items-center justify-between border-b border-slate-200 px-6 py-4">
+          <h2
+            id="product-form-title"
+            className="text-lg font-semibold text-slate-900"
+          >
+            {product ? 'Editar produto' : 'Novo produto'}
+          </h2>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label="Fechar"
+            disabled={submitting}
+            onClick={() => onClose(changed)}
+          >
+            <X className="size-5" />
+          </button>
+        </div>
 
         <form onSubmit={handleSubmit} noValidate>
-          {formError && (
-            <div className="alert" role="alert">
-              {formError}
-            </div>
-          )}
-
-          <div className="field">
-            <label htmlFor="product-name">Nome *</label>
-            <input
-              id="product-name"
-              ref={nameRef}
-              value={name}
-              maxLength={255}
-              aria-invalid={!!errors.name}
-              onChange={(event) => setName(event.target.value)}
-            />
-            {errors.name && <span className="field__error">{errors.name}</span>}
-          </div>
-
-          <div className="field">
-            <label htmlFor="product-code">Código interno</label>
-            <input
-              id="product-code"
-              value={internalCode}
-              maxLength={100}
-              placeholder="Ex.: CHU-001"
-              aria-invalid={!!errors.internal_code}
-              onChange={(event) => setInternalCode(event.target.value)}
-            />
-            {errors.internal_code && (
-              <span className="field__error">{errors.internal_code}</span>
-            )}
-          </div>
-
-          <div className="field">
-            <label htmlFor="product-image">Imagem</label>
-            <div className="image-picker">
-              {currentImage ? (
-                <img
-                  className="image-picker__preview"
-                  src={currentImage}
-                  alt="Imagem do produto"
-                />
-              ) : (
-                <div className="image-picker__preview image-picker__preview--empty">
-                  Sem imagem
-                </div>
-              )}
-              <div className="image-picker__actions">
-                <input
-                  id="product-image"
-                  ref={fileRef}
-                  type="file"
-                  accept={IMAGE_TYPES.join(',')}
-                  hidden
-                  onChange={handleFileChange}
-                />
-                <button
-                  type="button"
-                  className="btn btn--small"
-                  disabled={submitting}
-                  onClick={() => fileRef.current?.click()}
-                >
-                  {currentImage ? 'Trocar imagem' : 'Escolher imagem'}
-                </button>
-                {currentImage && (
-                  <button
-                    type="button"
-                    className="btn btn--small btn--danger"
-                    disabled={submitting}
-                    onClick={clearImage}
-                  >
-                    Remover
-                  </button>
-                )}
-                <small>JPG, PNG, WebP ou GIF, até 2 MB.</small>
+          <div className="space-y-5 px-6 py-5">
+            {formError && (
+              <div className="alert alert-error" role="alert">
+                <CircleAlert className="mt-0.5 size-4 shrink-0" />
+                {formError}
               </div>
-            </div>
-            {errors.image_url && (
-              <span className="field__error">{errors.image_url}</span>
             )}
+
+            <div>
+              <label htmlFor="product-name" className="label">
+                Nome <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="product-name"
+                ref={nameRef}
+                className="input"
+                value={name}
+                maxLength={255}
+                aria-invalid={!!errors.name}
+                onChange={(event) => setName(event.target.value)}
+              />
+              {errors.name && <span className="field-error">{errors.name}</span>}
+            </div>
+
+            <div>
+              <label htmlFor="product-code" className="label">
+                Código interno
+              </label>
+              <input
+                id="product-code"
+                className="input font-mono"
+                value={internalCode}
+                maxLength={100}
+                placeholder="Ex.: CHU-001"
+                aria-invalid={!!errors.internal_code}
+                onChange={(event) => setInternalCode(event.target.value)}
+              />
+              {errors.internal_code && (
+                <span className="field-error">{errors.internal_code}</span>
+              )}
+            </div>
+
+            <div>
+              <span className="label">Imagem</span>
+              <input
+                id="product-image"
+                ref={fileRef}
+                type="file"
+                accept={IMAGE_TYPES.join(',')}
+                hidden
+                onChange={handleFileChange}
+              />
+              <div
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  setDragging(true)
+                }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                className={`flex items-center gap-4 rounded-xl border-2 border-dashed p-4 transition ${
+                  dragging
+                    ? 'border-pitch-500 bg-pitch-50'
+                    : 'border-slate-300 bg-slate-50'
+                }`}
+              >
+                {currentImage ? (
+                  <img
+                    src={currentImage}
+                    alt="Imagem do produto"
+                    className="size-24 shrink-0 rounded-lg border border-slate-200 bg-white object-cover"
+                  />
+                ) : (
+                  <div className="flex size-24 shrink-0 items-center justify-center rounded-lg bg-white text-slate-400 ring-1 ring-slate-200">
+                    <ImagePlus className="size-8" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm text-slate-600">
+                    Arraste uma imagem aqui ou escolha um arquivo.
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-400">
+                    JPG, PNG, WebP ou GIF, até 2 MB.
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      disabled={submitting}
+                      onClick={() => fileRef.current?.click()}
+                    >
+                      {currentImage ? 'Trocar imagem' : 'Escolher imagem'}
+                    </button>
+                    {currentImage && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm text-red-600"
+                        disabled={submitting}
+                        onClick={clearImage}
+                      >
+                        <Trash2 className="size-3.5" />
+                        Remover
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {errors.image_url && (
+                <span className="field-error">{errors.image_url}</span>
+              )}
+            </div>
           </div>
 
-          <div className="modal__actions">
+          <div className="flex justify-end gap-3 rounded-b-2xl border-t border-slate-200 bg-slate-50 px-6 py-4">
             <button
               type="button"
-              className="btn btn--ghost"
+              className="btn btn-secondary"
               onClick={() => onClose(changed)}
               disabled={submitting}
             >
               Cancelar
             </button>
-            <button type="submit" className="btn btn--primary" disabled={submitting}>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting && <Loader2 className="size-4 animate-spin" />}
               {submitting ? 'Salvando...' : 'Salvar'}
             </button>
           </div>

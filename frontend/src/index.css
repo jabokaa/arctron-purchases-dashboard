@@ -1,40 +1,116 @@
-:root {
-  --cbf-navy: #193375;
-  --cbf-navy-dark: #0f1f4a;
-  --cbf-green: #19ae47;
-  --cbf-green-dark: #128a37;
-  --cbf-yellow: #fddc02;
-  --cbf-blue: #0c87d1;
+@import 'tailwindcss';
+@import '@fontsource-variable/inter';
 
-  --text: #4a5273;
-  --text-h: #0f1f4a;
-  --bg: #f4f6fb;
-  --surface: #ffffff;
-  --border: #d9deea;
-  --danger: #c62828;
+@theme {
+  --font-sans:
+    'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
+    Roboto, sans-serif;
 
-  --sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  /* Azul CBF */
+  --color-navy-50: #f1f5fd;
+  --color-navy-100: #e1e9fa;
+  --color-navy-200: #c3d2f3;
+  --color-navy-500: #3a5bb0;
+  --color-navy-600: #2a4690;
+  --color-navy-700: #193375;
+  --color-navy-800: #132a5f;
+  --color-navy-900: #0f1f4a;
+  --color-navy-950: #0a1533;
 
-  font: 16px/1.5 var(--sans);
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  /* Verde CBF */
+  --color-pitch-50: #ecfdf3;
+  --color-pitch-100: #d3f8e1;
+  --color-pitch-500: #19ae47;
+  --color-pitch-600: #128a37;
+  --color-pitch-700: #0f6e2d;
+
+  --color-gold: #fddc02;
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply min-h-svh bg-slate-50 text-slate-600;
+  }
+
+  #root {
+    @apply min-h-svh;
+  }
+
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
+  }
 }
 
-body {
-  margin: 0;
-  min-height: 100svh;
-}
+@layer components {
+  /* ---------- Botões ---------- */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-semibold whitespace-nowrap transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-navy-600 disabled:cursor-not-allowed disabled:opacity-60;
+  }
 
-#root {
-  min-height: 100svh;
+  .btn-primary {
+    @apply bg-pitch-500 text-white shadow-sm hover:bg-pitch-600 focus-visible:outline-pitch-600;
+  }
+
+  .btn-secondary {
+    @apply border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50;
+  }
+
+  .btn-danger {
+    @apply bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:outline-red-600;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-[13px];
+  }
+
+  .icon-btn {
+    @apply inline-flex size-9 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-navy-700 focus-visible:outline-2 focus-visible:outline-navy-600;
+  }
+
+  .icon-btn-danger {
+    @apply hover:bg-red-50 hover:text-red-600;
+  }
+
+  /* ---------- Formulário ---------- */
+  .label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+
+  .input {
+    @apply block w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-xs transition placeholder:text-slate-400 focus:border-navy-500 focus:ring-4 focus:ring-navy-500/15 focus:outline-none;
+  }
+
+  .input[aria-invalid='true'] {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/15;
+  }
+
+  .field-error {
+    @apply mt-1.5 block text-[13px] text-red-600;
+  }
+
+  /* ---------- Alertas ---------- */
+  .alert {
+    @apply flex items-start gap-2.5 rounded-lg border px-3.5 py-3 text-sm;
+  }
+
+  .alert-error {
+    @apply border-red-200 bg-red-50 text-red-700;
+  }
+
+  .alert-success {
+    @apply border-pitch-100 bg-pitch-50 text-pitch-700;
+  }
+
+  /* ---------- Cartão ---------- */
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-xs;
+  }
 }
