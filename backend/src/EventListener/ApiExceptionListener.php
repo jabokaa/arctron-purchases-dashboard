@@ -133,6 +133,8 @@ final class ApiExceptionListener
             str_starts_with($message, 'Unsupported format') => 'Formato não suportado. Envie o corpo em JSON com o cabeçalho "Content-Type: application/json".',
             Response::HTTP_METHOD_NOT_ALLOWED === $status => 'Método HTTP não permitido para esta rota.',
             str_starts_with($message, 'No route found') => 'Rota não encontrada.',
+            // Parâmetro da URL que não cabe no tipo esperado, ex.: id maior que o maior inteiro
+            str_starts_with($message, 'The value for the') => 'O valor informado na URL é inválido.',
             '' === $message => self::TITLES[$status] ?? 'Erro',
             default => $message,
         };

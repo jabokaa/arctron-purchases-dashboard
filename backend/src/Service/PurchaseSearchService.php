@@ -7,10 +7,11 @@ namespace App\Service;
 use App\Dto\PurchaseFilterInput;
 use App\Dto\PurchaseListOutput;
 use App\Dto\PurchaseOutput;
+use App\Exception\PurchaseNotFoundException;
 use App\Repository\PurchaseRepository;
 
 /**
- * Consulta de compras: busca no repositório pelos filtros e monta a resposta paginada.
+ * Consulta de compras: listagem com filtros (resposta paginada) e detalhe de uma compra.
  */
 final class PurchaseSearchService implements PurchaseSearchServiceInterface
 {
@@ -31,5 +32,13 @@ final class PurchaseSearchService implements PurchaseSearchServiceInterface
                 'total_pages' => (int) ceil($result['total'] / $filter->perPage),
             ],
         );
+    }
+
+    public function find(int $id): PurchaseOutput
+    {
+        $purchase = $this->purchases->findWithDetails($id)
+            ?? throw new PurchaseNotFoundException($id);
+
+        return PurchaseOutput::fromEntity($purchase);
     }
 }

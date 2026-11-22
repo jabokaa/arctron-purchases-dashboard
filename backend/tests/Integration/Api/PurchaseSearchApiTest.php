@@ -70,7 +70,7 @@ final class PurchaseSearchApiTest extends IntegrationTestCase
         self::assertSame(20000, $purchase['amount']);
         self::assertSame('2026-11-20T12:00:00+00:00', $purchase['purchased_at']);
         self::assertSame(
-            ['type' => 'COMPANY', 'name' => 'Loja Exemplo LTDA', 'trade_name' => 'Loja Bacana', 'email' => 'contato@loja.com', 'document' => '11222333000181'],
+            ['type' => 'COMPANY', 'name' => 'Loja Exemplo LTDA', 'trade_name' => 'Loja Bacana', 'email' => 'contato@loja.com', 'document_type' => 'CNPJ', 'document' => '11222333000181'],
             array_diff_key($purchase['customer'], ['id' => true]),
         );
         self::assertSame(

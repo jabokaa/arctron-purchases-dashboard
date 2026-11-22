@@ -9,6 +9,7 @@ use App\Entity\CompanyCustomer;
 use App\Entity\IndividualCustomer;
 use App\Entity\Purchase;
 use App\Entity\SalesChannel;
+use App\Exception\PurchaseNotFoundException;
 use App\Repository\PurchaseRepository;
 use App\Service\PurchaseSearchService;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -17,8 +18,10 @@ use PHPUnit\Framework\TestCase;
 /**
  * Testes unitários do PurchaseSearchService (consulta de compras).
  *
- * O que é testado: se o service repassa os filtros ao repositório e monta a resposta
- * paginada corretamente: cada compra no formato da API e os dados de paginação (meta).
+ * O que é testado:
+ * - search(): se o service repassa os filtros ao repositório e monta a resposta paginada
+ *   corretamente: cada compra no formato da API e os dados de paginação (meta);
+ * - find(): se a compra encontrada volta no formato da API e se a compra inexistente vira PurchaseNotFoundException.
  *
  * Como é testado:
  * - É um teste unitário puro (TestCase): o Symfony não é iniciado e o banco não é acessado.
@@ -26,6 +29,10 @@ use PHPUnit\Framework\TestCase;
  */
 final class PurchaseSearchServiceTest extends TestCase
 {
+    // =========================================================================
+    // Listagem com filtros (search)
+    // =========================================================================
+
     /**
      * O filtro recebido deve ser passado ao repositório sem alteração.
      * Espera uma única chamada a search() com o mesmo objeto de filtro.
@@ -105,6 +112,47 @@ final class PurchaseSearchServiceTest extends TestCase
 
         // Página pedida além do total: devolve a página pedida, sem erro
         yield 'página além do total' => [5, 10, 12, 2];
+    }
+
+    // =========================================================================
+    // Detalhe de uma compra (find)
+    // =========================================================================
+
+    /**
+     * Compra encontrada pelo id.
+     * Espera que o repositório seja consultado com o id e que a compra volte no formato da API.
+     */
+    public function testFindReturnsPurchaseDetails(): void
+    {
+        $repository = $this->createMock(PurchaseRepository::class);
+        $repository->expects($this->once())
+            ->method('findWithDetails')
+            ->with(42)
+            ->willReturn(self::purchase('PED-42', (new IndividualCustomer())->setFullName('João Silva')->setCpf('52998224725')));
+
+        $result = (new PurchaseSearchService($repository))->find(42);
+
+        self::assertSame('PED-42', $result->referenceCode);
+        self::assertSame('CPF', $result->customer['document_type']);
+        self::assertSame('52998224725', $result->customer['document']);
+    }
+
+    /**
+     * Nenhuma compra com o id informado.
+     * Espera PurchaseNotFoundException com o id e a mensagem para o cliente da API.
+     */
+    public function testFindThrowsWhenPurchaseDoesNotExist(): void
+    {
+        $repository = $this->createStub(PurchaseRepository::class);
+        $repository->method('findWithDetails')->willReturn(null);
+
+        try {
+            (new PurchaseSearchService($repository))->find(999);
+            self::fail('Era esperada uma PurchaseNotFoundException.');
+        } catch (PurchaseNotFoundException $e) {
+            self::assertSame(999, $e->purchaseId);
+            self::assertSame('Compra 999 não encontrada.', $e->getMessage());
+        }
     }
 
     private static function purchase(string $referenceCode, IndividualCustomer|CompanyCustomer $customer): Purchase

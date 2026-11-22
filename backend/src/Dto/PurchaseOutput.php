@@ -18,7 +18,7 @@ use App\Entity\PurchaseItem;
 final class PurchaseOutput
 {
     /**
-     * @param array{id: int|null, type: string, name: string, trade_name: string|null, email: string|null, document: string} $customer
+     * @param array{id: int|null, type: string, name: string, trade_name: string|null, email: string|null, document_type: string, document: string} $customer
      * @param list<array{product_id: int|null, name: string, quantity: int, unit_price: int, discount: int, total_price: int}> $items
      */
     private function __construct(
@@ -53,6 +53,7 @@ final class PurchaseOutput
                 'name' => $customer->getName(),
                 'trade_name' => $customer instanceof CompanyCustomer ? $customer->getTradeName() : null,
                 'email' => $customer->getEmail(),
+                'document_type' => $customer->getDocumentType(),
                 'document' => $customer->getDocument(),
             ],
             items: array_map(

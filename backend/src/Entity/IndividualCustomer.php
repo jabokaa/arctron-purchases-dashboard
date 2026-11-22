@@ -45,6 +45,11 @@ class IndividualCustomer extends Customer
         return $this->cpf;
     }
 
+    public function getDocumentType(): string
+    {
+        return 'CPF';
+    }
+
     public function setDocument(string $document): static
     {
         return $this->setCpf($document);

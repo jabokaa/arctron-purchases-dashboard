@@ -48,6 +48,18 @@ final class PurchaseController extends AbstractController
     }
 
     /**
+     * Detalhe de uma compra: cliente (com documento), itens, observações e canal.
+     *
+     * O requirements aceita só números no {id}: /api/purchases/abc nem chega aqui (vira 404 de rota).
+     * Compra inexistente: o service lança PurchaseNotFoundException, que vira 404.
+     */
+    #[Route('/{id}', name: 'show', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function show(int $id): JsonResponse
+    {
+        return $this->json($this->purchaseSearchService->find($id));
+    }
+
+    /**
      * Recebe uma compra.
      *
      * O #[MapRequestPayload] faz, antes do método rodar:

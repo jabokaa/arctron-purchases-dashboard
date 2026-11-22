@@ -58,6 +58,9 @@ abstract class Customer
     /** Documento sem máscara: CPF ou CNPJ */
     abstract public function getDocument(): string;
 
+    /** Tipo do documento: CPF (pessoa física) ou CNPJ (pessoa jurídica) */
+    abstract public function getDocumentType(): string;
+
     /** Grava o documento no campo do tipo: cpf (pessoa física) ou cnpj (pessoa jurídica) */
     abstract public function setDocument(string $document): static;
 

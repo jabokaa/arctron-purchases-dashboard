@@ -48,6 +48,11 @@ class CompanyCustomer extends Customer
         return $this->cnpj;
     }
 
+    public function getDocumentType(): string
+    {
+        return 'CNPJ';
+    }
+
     public function setDocument(string $document): static
     {
         return $this->setCnpj($document);

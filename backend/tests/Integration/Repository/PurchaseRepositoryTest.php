@@ -18,10 +18,13 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * Testes do PurchaseRepository::search() (consulta de compras com filtros e paginação).
+ * Testes do PurchaseRepository: search() (consulta com filtros e paginação) e findWithDetails() (detalhe por id).
  *
- * O que é testado: se a consulta SQL devolve exatamente as compras esperadas para cada filtro,
- * na ordem certa (mais recentes primeiro), com a paginação e os itens corretos.
+ * O que é testado:
+ * - search(): se a consulta SQL devolve exatamente as compras esperadas para cada filtro,
+ *   na ordem certa (mais recentes primeiro), com a paginação e os itens corretos;
+ * - findWithDetails(): se a compra volta completa (canal, cliente com o tipo certo, itens e produtos)
+ *   e se um id inexistente devolve null.
  *
  * Por que fica na pasta de integração: o trabalho do repositório é montar e executar SQL
  * (joins da herança de clientes, LIKE sem diferenciar maiúsculas, intervalos de data e valor,
@@ -242,8 +245,63 @@ final class PurchaseRepositoryTest extends IntegrationTestCase
     }
 
     // =========================================================================
+    // Detalhe de uma compra (findWithDetails)
+    // =========================================================================
+
+    /**
+     * Busca pelo id de uma compra com 3 itens.
+     * Espera a compra certa, com canal, cliente (pessoa física) e todos os itens e produtos carregados.
+     */
+    public function testFindWithDetailsReturnsPurchaseWithEverythingLoaded(): void
+    {
+        $purchase = $this->repository->findWithDetails($this->idOf('PED-002'));
+
+        self::assertNotNull($purchase);
+        self::assertSame('PED-002', $purchase->getReferenceCode());
+        self::assertSame(SalesChannel::API, $purchase->getSalesChannel()->getCode());
+
+        $customer = $purchase->getCustomer();
+        self::assertInstanceOf(IndividualCustomer::class, $customer);
+        self::assertSame('Maria Souza', $customer->getName());
+        self::assertSame('11144477735', $customer->getDocument());
+
+        self::assertCount(3, $purchase->getItems());
+        self::assertSame('Produto Teste', $purchase->getItems()->first()->getProduct()->getName());
+    }
+
+    /**
+     * Busca pelo id de uma compra de pessoa jurídica.
+     * Espera o cliente com o tipo certo e os dados da empresa.
+     */
+    public function testFindWithDetailsLoadsCompanyCustomer(): void
+    {
+        $customer = $this->repository->findWithDetails($this->idOf('VENDA-003'))->getCustomer();
+
+        self::assertInstanceOf(CompanyCustomer::class, $customer);
+        self::assertSame('Loja Exemplo LTDA', $customer->getLegalName());
+        self::assertSame('Loja Bacana', $customer->getTradeName());
+    }
+
+    /**
+     * Busca por um id que não existe.
+     * Espera null (quem decide o que fazer, no caso 404, é o service).
+     */
+    public function testFindWithDetailsReturnsNullWhenNotFound(): void
+    {
+        self::assertNull($this->repository->findWithDetails(999999));
+    }
+
+    // =========================================================================
     // Auxiliares
     // =========================================================================
+
+    /**
+     * Id gravado no banco para o código de referência (os ids são gerados pelo banco).
+     */
+    private function idOf(string $referenceCode): int
+    {
+        return (int) $this->connection()->fetchOne('SELECT id FROM purchases WHERE reference_code = ?', [$referenceCode]);
+    }
 
     /**
      * Grava as 5 compras da tabela do comentário da classe.

@@ -27,6 +27,25 @@ class PurchaseRepository extends ServiceEntityRepository
     }
 
     /**
+     * Busca uma compra pelo id, já com canal, cliente, itens e produtos (uma consulta só).
+     * Retorna null se a compra não existir.
+     */
+    public function findWithDetails(int $id): ?Purchase
+    {
+        return $this->createQueryBuilder('purchase')
+            ->addSelect('salesChannel', 'customer', 'item', 'product')
+            ->join('purchase.salesChannel', 'salesChannel')
+            ->join('purchase.customer', 'customer')
+            ->leftJoin('purchase.items', 'item')
+            ->leftJoin('item.product', 'product')
+            ->where('purchase.id = :id')
+            ->setParameter('id', $id)
+            ->orderBy('item.id', 'ASC')
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
      * Busca compras pelos filtros, paginadas, das mais recentes para as mais antigas.
      *
      * Já carrega junto (fetch join) canal, cliente, itens e produtos, para montar a resposta
