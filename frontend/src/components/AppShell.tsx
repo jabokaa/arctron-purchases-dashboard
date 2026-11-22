@@ -1,5 +1,5 @@
 import {
-  BarChart3,
+  LayoutDashboard,
   LogOut,
   Menu,
   Package,
@@ -12,7 +12,7 @@ import { useState, type ReactNode } from 'react'
 import cbfLogo from '../assets/cbf-logo.svg'
 import type { User } from '../services/auth'
 
-export type PageId = 'products'
+export type PageId = 'dashboard' | 'products' | 'customers'
 
 type MenuItem = {
   id: PageId | null
@@ -22,10 +22,10 @@ type MenuItem = {
 
 // Itens sem `id` ainda não têm tela: aparecem desabilitados
 const MENU: MenuItem[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'products', label: 'Produtos', icon: Package },
+  { id: 'customers', label: 'Clientes', icon: Users },
   { id: null, label: 'Compras', icon: ShoppingCart },
-  { id: null, label: 'Clientes', icon: Users },
-  { id: null, label: 'Relatórios', icon: BarChart3 },
 ]
 
 type Props = {
