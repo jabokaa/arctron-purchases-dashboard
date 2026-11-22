@@ -31,10 +31,4 @@ $arctron_hero_image = arctron_product_image_url('BOL-002');
 	</div>
 </section>
 
-<section class="arctron-benefits" aria-label="Vantagens">
-	<div class="arctron-benefit"><?php echo arctron_icon('truck'); ?><div><strong>Frete grátis</strong><span>nas compras acima de R$ 299</span></div></div>
-	<div class="arctron-benefit"><?php echo arctron_icon('card'); ?><div><strong>Até 10x sem juros</strong><span>no cartão de crédito</span></div></div>
-	<div class="arctron-benefit"><?php echo arctron_icon('return'); ?><div><strong>Troca grátis</strong><span>em até 30 dias</span></div></div>
-	<div class="arctron-benefit"><?php echo arctron_icon('shield'); ?><div><strong>Compra segura</strong><span>seus dados protegidos</span></div></div>
-</section>
 <!-- /wp:html -->

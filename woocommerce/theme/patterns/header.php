@@ -13,10 +13,6 @@ $arctron_categories = get_terms([
     'orderby'    => 'meta_value_num',
 ]);
 ?>
-<!-- wp:html -->
-<div class="arctron-topbar">
-	<p><strong>Frete grátis</strong> acima de R$ 299 · Parcele em até <strong>10x sem juros</strong> · Troca grátis em 30 dias</p>
-</div>
 <!-- /wp:html -->
 
 <!-- wp:group {"className":"arctron-header","layout":{"type":"constrained"}} -->

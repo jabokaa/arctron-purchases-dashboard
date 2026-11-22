@@ -65,6 +65,9 @@ $settings = (array) get_option("wcbcf_settings", array());
 $settings["person_type"] = "1";
 update_option("wcbcf_settings", $settings);
 '
+# O WooCommerce esconde o campo "Empresa" por padrão, mas o plugin exige esse campo para pessoa jurídica.
+# Com o campo "optional", o plugin mostra o campo só quando o cliente escolhe pessoa jurídica.
+wp option update woocommerce_checkout_company_field optional
 
 log "Pagamento na entrega (para conseguir finalizar um pedido de teste)"
 wp wc payment_gateway update cod --enabled=true --user="$WOO_ADMIN_USER"

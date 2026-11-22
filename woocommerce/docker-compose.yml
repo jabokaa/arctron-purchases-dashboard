@@ -13,6 +13,9 @@ services:
       MARIADB_USER: ${WOO_DB_USER}
       MARIADB_PASSWORD: ${WOO_DB_PASSWORD}
       MARIADB_ROOT_PASSWORD: ${WOO_DB_ROOT_PASSWORD}
+    # Acesso pelo host (DBeaver etc.): localhost:3308 (a 3306 e a 3307 costumam estar ocupadas por outros bancos).
+    ports:
+      - "3308:3306"
     volumes:
       - woo_db_data:/var/lib/mysql
     healthcheck:
