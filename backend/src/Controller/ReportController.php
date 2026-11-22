@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\CustomerReportFilterInput;
 use App\Dto\TimelineFilterInput;
 use App\Service\ReportServiceInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -48,5 +49,19 @@ final class ReportController extends AbstractController
         TimelineFilterInput $filter = new TimelineFilterInput(),
     ): JsonResponse {
         return $this->json($this->reportService->timeline($filter->interval()));
+    }
+
+    /**
+     * Ranking dos clientes: quantidade de compras, valor total e valor médio por cliente, paginado.
+     * Parâmetros: page, limit (máx. 100), sort (total, average, count) e order (asc, desc).
+     * Sem parâmetros: os 20 clientes com maior valor total. Top 5 da home: ?limit=5.
+     * Parâmetro inválido → 422.
+     */
+    #[Route('/customers', name: 'customers', methods: ['GET'])]
+    public function customers(
+        #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)]
+        CustomerReportFilterInput $filter = new CustomerReportFilterInput(),
+    ): JsonResponse {
+        return $this->json($this->reportService->customers($filter));
     }
 }

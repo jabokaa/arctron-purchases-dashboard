@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 namespace App\Service;
 
+use App\Dto\CustomerReportFilterInput;
+use App\Dto\ReportRankingOutput;
 use App\Dto\ReportSummaryOutput;
 use App\Dto\ReportTimelineOutput;
+use App\Entity\CompanyCustomer;
 use App\Enum\TimelineInterval;
+use App\Repository\CustomerRepository;
 use App\Repository\PurchaseItemRepository;
 use App\Repository\PurchaseRepository;
 
@@ -20,6 +24,7 @@ final class ReportService implements ReportServiceInterface
     public function __construct(
         private readonly PurchaseRepository $purchases,
         private readonly PurchaseItemRepository $purchaseItems,
+        private readonly CustomerRepository $customers,
     ) {}
 
     /**
@@ -69,5 +74,52 @@ final class ReportService implements ReportServiceInterface
                 'discount' => $period['discount'],
             ], $this->purchases->timeline($interval)),
         );
+    }
+
+    /**
+     * Ranking dos clientes pelas compras (quantidade, valor total e valor médio), paginado.
+     * Os números vêm prontos do banco; aqui cada cliente ganha o mesmo formato usado nas compras
+     * (tipo, nome, documento) e a paginação é montada.
+     */
+    public function customers(CustomerReportFilterInput $filter): ReportRankingOutput
+    {
+        $ranking = $this->customers->purchaseRanking($filter->sort(), $filter->order(), $filter->page, $filter->limit);
+
+        return new ReportRankingOutput(
+            data: array_map(static function (array $row): array {
+                $isCompany = CompanyCustomer::TYPE === $row['personType'];
+
+                return [
+                    'customer' => [
+                        'id' => $row['id'],
+                        'type' => $row['personType'],
+                        'name' => $isCompany ? $row['legalName'] : $row['fullName'],
+                        'trade_name' => $row['tradeName'],
+                        'email' => $row['email'],
+                        'document_type' => $isCompany ? 'CNPJ' : 'CPF',
+                        'document' => $isCompany ? $row['cnpj'] : $row['cpf'],
+                    ],
+                    'purchases_count' => $row['purchasesCount'],
+                    'total' => $row['total'],
+                    'average' => $row['average'],
+                ];
+            }, $ranking['items']),
+            meta: self::paginationMeta($filter->page, $filter->limit, $ranking['total']),
+        );
+    }
+
+    /**
+     * Dados da paginação dos rankings.
+     *
+     * @return array{page: int, limit: int, total: int, total_pages: int}
+     */
+    private static function paginationMeta(int $page, int $limit, int $total): array
+    {
+        return [
+            'page' => $page,
+            'limit' => $limit,
+            'total' => $total,
+            'total_pages' => (int) ceil($total / $limit),
+        ];
     }
 }
