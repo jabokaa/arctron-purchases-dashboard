@@ -18,8 +18,11 @@ use Symfony\Component\Security\Core\User\UserInterface;
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users', options: ['comment' => 'Usuários que acessam o painel'])]
 #[ORM\UniqueConstraint(name: 'uniq_users_email', columns: ['email'])]
+#[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    use Timestampable;
+
     public const ROLE_USER = 'ROLE_USER';
 
     #[ORM\Id]
@@ -39,9 +42,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /** @var list<string> */
     #[ORM\Column(type: 'json', options: ['comment' => 'Perfis de acesso além de ROLE_USER, ex.: ["ROLE_ADMIN"]'])]
     private array $roles = [];
-
-    #[ORM\Column(options: ['comment' => 'Quando o usuário foi criado'])]
-    private \DateTimeImmutable $createdAt;
 
     public function __construct()
     {
@@ -102,11 +102,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->roles = $roles;
 
         return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
     }
 
     public function getUserIdentifier(): string

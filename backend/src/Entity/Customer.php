@@ -32,6 +32,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 abstract class Customer
 {
+    use Timestampable;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
@@ -39,12 +41,6 @@ abstract class Customer
 
     #[ORM\Column(length: 255, nullable: true, options: ['comment' => 'E-mail de contato do cliente (opcional)'])]
     private ?string $email = null;
-
-    #[ORM\Column(options: ['comment' => 'Data de criação do registro'])]
-    private \DateTimeImmutable $createdAt;
-
-    #[ORM\Column(options: ['comment' => 'Data da última atualização do registro'])]
-    private \DateTimeImmutable $updatedAt;
 
     /** Tipo do cliente (valor do discriminador): INDIVIDUAL ou COMPANY */
     abstract public function getType(): string;
@@ -64,19 +60,6 @@ abstract class Customer
     /** Grava o documento no campo do tipo: cpf (pessoa física) ou cnpj (pessoa jurídica) */
     abstract public function setDocument(string $document): static;
 
-    #[ORM\PrePersist]
-    public function onPrePersist(): void
-    {
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = $this->createdAt;
-    }
-
-    #[ORM\PreUpdate]
-    public function onPreUpdate(): void
-    {
-        $this->updatedAt = new \DateTimeImmutable();
-    }
-
     public function getId(): ?int
     {
         return $this->id;
@@ -92,15 +75,5 @@ abstract class Customer
         $this->email = $email;
 
         return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): \DateTimeImmutable
-    {
-        return $this->updatedAt;
     }
 }

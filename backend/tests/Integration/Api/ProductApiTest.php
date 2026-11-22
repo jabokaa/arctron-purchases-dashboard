@@ -126,7 +126,7 @@ final class ProductApiTest extends IntegrationTestCase
     {
         $id = $this->api('POST', '/api/products', ['name' => 'Apito'])['body']['id'];
         $this->connection()->executeStatement(
-            "INSERT INTO product_external_ids (product_id, sales_channel_id, external_id, created_at) SELECT ?, id, 'API-1', now() FROM sales_channels WHERE code = 'API'",
+            "INSERT INTO product_external_ids (product_id, sales_channel_id, external_id, created_at, updated_at) SELECT ?, id, 'API-1', now(), now() FROM sales_channels WHERE code = 'API'",
             [$id],
         );
 

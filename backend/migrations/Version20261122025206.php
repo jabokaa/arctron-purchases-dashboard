@@ -26,9 +26,9 @@ final class Version20261122025206 extends AbstractMigration
     public function up(Schema $schema): void
     {
         $this->addSql(<<<'SQL'
-            INSERT INTO sales_channels (code, name) VALUES
-                ('API', 'API'),
-                ('WOOCOMMERCE', 'WooCommerce')
+            INSERT INTO sales_channels (code, name, created_at, updated_at) VALUES
+                ('API', 'API', NOW(), NOW()),
+                ('WOOCOMMERCE', 'WooCommerce', NOW(), NOW())
             ON CONFLICT (code) DO NOTHING
         SQL);
     }

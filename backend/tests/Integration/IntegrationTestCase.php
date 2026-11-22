@@ -105,7 +105,7 @@ abstract class IntegrationTestCase extends WebTestCase
             'TRUNCATE api_tokens, users, integration_events, purchase_items, purchases, product_external_ids, products, individual_customers, company_customers, customers RESTART IDENTITY CASCADE',
         );
         $this->connection()->executeStatement(
-            "INSERT INTO sales_channels (code, name) VALUES ('API', 'API'), ('WOOCOMMERCE', 'WooCommerce') ON CONFLICT (code) DO NOTHING",
+            "INSERT INTO sales_channels (code, name, created_at, updated_at) VALUES ('API', 'API', now(), now()), ('WOOCOMMERCE', 'WooCommerce', now(), now()) ON CONFLICT (code) DO NOTHING",
         );
     }
 

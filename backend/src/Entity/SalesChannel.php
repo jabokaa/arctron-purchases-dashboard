@@ -17,8 +17,11 @@ use Doctrine\ORM\Mapping as ORM;
     options: ['comment' => 'Canais de venda de onde as compras se originam (API, Shopify, WooCommerce...)'],
 )]
 #[ORM\UniqueConstraint(name: 'uniq_sales_channels_code', columns: ['code'])]
+#[ORM\HasLifecycleCallbacks]
 class SalesChannel
 {
+    use Timestampable;
+
     /** Canal das compras recebidas pelo endpoint POST /api/purchases (cadastrado na migration de seed) */
     public const API = 'API';
 

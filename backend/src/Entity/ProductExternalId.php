@@ -22,6 +22,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class ProductExternalId
 {
+    use Timestampable;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
@@ -38,15 +40,6 @@ class ProductExternalId
 
     #[ORM\Column(length: 255, options: ['comment' => 'ID do produto no sistema do canal de venda'])]
     private string $externalId;
-
-    #[ORM\Column(options: ['comment' => 'Data de criação do registro'])]
-    private \DateTimeImmutable $createdAt;
-
-    #[ORM\PrePersist]
-    public function onPrePersist(): void
-    {
-        $this->createdAt = new \DateTimeImmutable();
-    }
 
     public function getId(): ?int
     {
@@ -87,10 +80,5 @@ class ProductExternalId
         $this->externalId = $externalId;
 
         return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
     }
 }

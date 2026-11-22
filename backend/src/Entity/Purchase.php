@@ -30,6 +30,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class Purchase
 {
+    use Timestampable;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
@@ -58,12 +60,6 @@ class Purchase
     #[ORM\Column(type: Types::TEXT, nullable: true, options: ['comment' => 'Observações livres sobre a compra'])]
     private ?string $notes = null;
 
-    #[ORM\Column(options: ['comment' => 'Data de criação do registro'])]
-    private \DateTimeImmutable $createdAt;
-
-    #[ORM\Column(options: ['comment' => 'Data da última atualização do registro'])]
-    private \DateTimeImmutable $updatedAt;
-
     /** @var Collection<int, PurchaseItem> */
     #[ORM\OneToMany(targetEntity: PurchaseItem::class, mappedBy: 'purchase', cascade: ['persist'], orphanRemoval: true)]
     private Collection $items;
@@ -71,19 +67,6 @@ class Purchase
     public function __construct()
     {
         $this->items = new ArrayCollection();
-    }
-
-    #[ORM\PrePersist]
-    public function onPrePersist(): void
-    {
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = $this->createdAt;
-    }
-
-    #[ORM\PreUpdate]
-    public function onPreUpdate(): void
-    {
-        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -173,16 +156,6 @@ class Purchase
         $this->notes = $notes;
 
         return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): \DateTimeImmutable
-    {
-        return $this->updatedAt;
     }
 
     /** @return Collection<int, PurchaseItem> */

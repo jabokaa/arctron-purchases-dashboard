@@ -18,8 +18,11 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'api_tokens', options: ['comment' => 'Tokens de acesso emitidos no login'])]
 #[ORM\UniqueConstraint(name: 'uniq_api_tokens_token_hash', columns: ['token_hash'])]
 #[ORM\Index(name: 'idx_api_tokens_expires_at', columns: ['expires_at'])]
+#[ORM\HasLifecycleCallbacks]
 class ApiToken
 {
+    use Timestampable;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
@@ -35,9 +38,6 @@ class ApiToken
 
     #[ORM\Column(options: ['comment' => 'Quando o token deixa de valer'])]
     private \DateTimeImmutable $expiresAt;
-
-    #[ORM\Column(options: ['comment' => 'Quando o token foi emitido'])]
-    private \DateTimeImmutable $createdAt;
 
     public function __construct(User $user, string $tokenHash, \DateTimeImmutable $expiresAt)
     {
@@ -70,11 +70,6 @@ class ApiToken
     public function getExpiresAt(): \DateTimeImmutable
     {
         return $this->expiresAt;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
     }
 
     public function isExpired(\DateTimeImmutable $now = new \DateTimeImmutable()): bool

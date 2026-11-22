@@ -20,6 +20,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class Product
 {
+    use Timestampable;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
@@ -34,12 +36,6 @@ class Product
     #[ORM\Column(length: 2048, nullable: true, options: ['comment' => 'Caminho público da imagem enviada (/uploads/products/...) ou endereço externo, opcional'])]
     private ?string $imageUrl = null;
 
-    #[ORM\Column(options: ['comment' => 'Data de criação do registro'])]
-    private \DateTimeImmutable $createdAt;
-
-    #[ORM\Column(options: ['comment' => 'Data da última atualização do registro'])]
-    private \DateTimeImmutable $updatedAt;
-
     /** @var Collection<int, ProductExternalId> */
     #[ORM\OneToMany(targetEntity: ProductExternalId::class, mappedBy: 'product', cascade: ['persist'], orphanRemoval: true)]
     private Collection $externalIds;
@@ -47,19 +43,6 @@ class Product
     public function __construct()
     {
         $this->externalIds = new ArrayCollection();
-    }
-
-    #[ORM\PrePersist]
-    public function onPrePersist(): void
-    {
-        $this->createdAt = new \DateTimeImmutable();
-        $this->updatedAt = $this->createdAt;
-    }
-
-    #[ORM\PreUpdate]
-    public function onPreUpdate(): void
-    {
-        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -101,16 +84,6 @@ class Product
         $this->name = $name;
 
         return $this;
-    }
-
-    public function getCreatedAt(): \DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): \DateTimeImmutable
-    {
-        return $this->updatedAt;
     }
 
     /** @return Collection<int, ProductExternalId> */

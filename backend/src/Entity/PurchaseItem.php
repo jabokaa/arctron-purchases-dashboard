@@ -17,8 +17,11 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'purchase_items', options: ['comment' => 'Itens (produtos) que compõem cada compra'])]
 #[ORM\Index(name: 'idx_purchase_items_purchase', columns: ['purchase_id'])]
 #[ORM\Index(name: 'idx_purchase_items_product', columns: ['product_id'])]
+#[ORM\HasLifecycleCallbacks]
 class PurchaseItem
 {
+    use Timestampable;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]

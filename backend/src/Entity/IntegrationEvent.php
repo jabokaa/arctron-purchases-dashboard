@@ -20,8 +20,11 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'integration_events', options: ['comment' => 'Eventos recebidos de integrações externas (ex.: webhooks do WooCommerce)'])]
 #[ORM\Index(name: 'idx_integration_events_status', columns: ['status'])]
 #[ORM\Index(name: 'idx_integration_events_source_resource', columns: ['source', 'resource_id'])]
+#[ORM\HasLifecycleCallbacks]
 class IntegrationEvent
 {
+    use Timestampable;
+
     public const SOURCE_WOOCOMMERCE = 'woocommerce';
 
     #[ORM\Id]
