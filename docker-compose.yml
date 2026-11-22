@@ -15,6 +15,19 @@ services:
       timeout: 5s
       retries: 10
 
+  # Fila de mensagens: os webhooks do WooCommerce são processados de forma assíncrona pelo worker.
+  # Painel de administração: http://localhost:15672 (guest / guest)
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   backend:
     build: ./backend
     volumes:
@@ -23,6 +36,22 @@ services:
       - "8088:8000"
     depends_on:
       database:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  # Consome a fila do RabbitMQ: converte cada pedido do WooCommerce em uma compra.
+  # --time-limit reinicia o processo a cada hora (o restart sobe de novo), para não acumular memória.
+  worker:
+    build: ./backend
+    command: php bin/console messenger:consume async --time-limit=3600 -vv
+    restart: unless-stopped
+    volumes:
+      - ./backend:/app
+    depends_on:
+      database:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
 
   frontend:

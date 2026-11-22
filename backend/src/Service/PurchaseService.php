@@ -40,9 +40,12 @@ final class PurchaseService implements PurchaseServiceInterface
     }
 
     /**
+     * @param string $salesChannelCode canal da compra: API (padrão) ou WOOCOMMERCE. O canal também define
+     *                                 em qual catálogo de external_id os produtos são procurados.
+     *
      * @throws DuplicatePurchaseException quando o código de referência já foi usado
      */
-    public function create(PurchaseInput $input): Purchase
+    public function create(PurchaseInput $input, string $salesChannelCode = SalesChannel::API): Purchase
     {
         // 1. Evita compra duplicada pelo código de referência
         if (null !== $this->purchases->findOneBy(['referenceCode' => $input->referenceCode])) {
@@ -51,8 +54,8 @@ final class PurchaseService implements PurchaseServiceInterface
 
         try {
             // 2. Tudo dentro de uma transação: se algo falhar, nada é salvo pela metade
-            return $this->em->wrapInTransaction(function () use ($input): Purchase {
-                $salesChannel = $this->getSalesChannel();
+            return $this->em->wrapInTransaction(function () use ($input, $salesChannelCode): Purchase {
+                $salesChannel = $this->getSalesChannel($salesChannelCode);
                 $customer = $this->findOrCreateCustomer($input->customer);
 
                 $purchase = (new Purchase())
@@ -179,9 +182,9 @@ final class PurchaseService implements PurchaseServiceInterface
         return $customer;
     }
 
-    private function getSalesChannel(): SalesChannel
+    private function getSalesChannel(string $code): SalesChannel
     {
-        return $this->salesChannels->findOneBy(['code' => SalesChannel::API])
-            ?? throw new \LogicException(\sprintf('Canal de venda "%s" não cadastrado. Rode as migrations.', SalesChannel::API));
+        return $this->salesChannels->findOneBy(['code' => $code])
+            ?? throw new \LogicException(\sprintf('Canal de venda "%s" não cadastrado. Rode as migrations.', $code));
     }
 }

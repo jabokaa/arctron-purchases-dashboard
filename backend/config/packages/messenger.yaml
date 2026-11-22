@@ -1,0 +1,32 @@
+framework:
+    messenger:
+        buses:
+            messenger.bus.default:
+                middleware:
+                    # O worker fica rodando por horas: antes de cada mensagem, confere a conexão com o banco
+                    # e reconecta se ela caiu (ex.: o PostgreSQL encerrou a conexão ociosa).
+                    - doctrine_ping_connection
+
+        transports:
+            # Fila "async" no RabbitMQ (MESSENGER_TRANSPORT_DSN no .env).
+            # Se o processamento falhar com erro temporário (ex.: banco fora do ar), a mensagem é
+            # tentada de novo até 3 vezes, esperando 1s, 2s e 4s. O resultado de cada tentativa
+            # fica registrado na tabela integration_events.
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+
+        routing:
+            # Pedido recebido pelo webhook do WooCommerce → processado pelo worker (messenger:consume async)
+            'App\Message\ProcessWooCommerceOrder': async
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                # Nos testes a fila fica em memória: nada vai para o RabbitMQ, e o teste
+                # pode conferir a mensagem publicada e processá-la quando quiser.
+                async: 'in-memory://'

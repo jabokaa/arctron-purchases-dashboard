@@ -41,6 +41,7 @@ final class ApiExceptionListener
 {
     private const TITLES = [
         Response::HTTP_BAD_REQUEST => 'Requisição inválida',
+        Response::HTTP_UNAUTHORIZED => 'Não autorizado',
         Response::HTTP_NOT_FOUND => 'Não encontrado',
         Response::HTTP_METHOD_NOT_ALLOWED => 'Método não permitido',
         Response::HTTP_CONFLICT => 'Conflito',

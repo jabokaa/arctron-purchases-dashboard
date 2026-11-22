@@ -22,6 +22,9 @@ class SalesChannel
     /** Canal das compras recebidas pelo endpoint POST /api/purchases (cadastrado na migration de seed) */
     public const API = 'API';
 
+    /** Canal dos pedidos recebidos pelo webhook POST /api/webhooks/woocommerce (cadastrado na migration de seed) */
+    public const WOOCOMMERCE = 'WOOCOMMERCE';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]

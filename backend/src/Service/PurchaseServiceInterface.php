@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Dto\PurchaseInput;
 use App\Entity\Purchase;
+use App\Entity\SalesChannel;
 use App\Exception\DuplicatePurchaseException;
 
 /**
@@ -18,7 +19,10 @@ use App\Exception\DuplicatePurchaseException;
 interface PurchaseServiceInterface
 {
     /**
+     * Grava a compra no canal de venda informado: API (endpoint POST /api/purchases, o padrão)
+     * ou WOOCOMMERCE (pedidos recebidos pelo webhook).
+     *
      * @throws DuplicatePurchaseException quando o código de referência já foi usado
      */
-    public function create(PurchaseInput $input): Purchase;
+    public function create(PurchaseInput $input, string $salesChannelCode = SalesChannel::API): Purchase;
 }

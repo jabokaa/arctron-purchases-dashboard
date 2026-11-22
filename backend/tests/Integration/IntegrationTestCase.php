@@ -19,7 +19,7 @@ use Symfony\Component\Console\Output\BufferedOutput;
  *   O banco é o "app_test" (o Doctrine acrescenta o sufixo "_test" no ambiente de teste,
  *   ver config/packages/doctrine.yaml), separado do banco "app" de desenvolvimento.
  * - Antes de CADA teste, os dados das tabelas são apagados, para um teste não interferir no outro.
- *   O canal de venda API é recriado caso algum teste o tenha removido.
+ *   Os canais de venda API e WOOCOMMERCE são recriados caso algum teste os tenha removido.
  */
 abstract class IntegrationTestCase extends WebTestCase
 {
@@ -66,15 +66,17 @@ abstract class IntegrationTestCase extends WebTestCase
     }
 
     /**
-     * Deixa o banco vazio (só com o canal API) antes de cada teste.
+     * Deixa o banco vazio (só com os canais de venda API e WOOCOMMERCE) antes de cada teste.
      * RESTART IDENTITY reinicia os ids; CASCADE apaga junto as tabelas que dependem destas.
      */
     private function clearTables(): void
     {
         $this->connection()->executeStatement(
-            'TRUNCATE purchase_items, purchases, product_external_ids, products, individual_customers, company_customers, customers RESTART IDENTITY CASCADE',
+            'TRUNCATE integration_events, purchase_items, purchases, product_external_ids, products, individual_customers, company_customers, customers RESTART IDENTITY CASCADE',
         );
-        $this->connection()->executeStatement("INSERT INTO sales_channels (code, name) VALUES ('API', 'API') ON CONFLICT (code) DO NOTHING");
+        $this->connection()->executeStatement(
+            "INSERT INTO sales_channels (code, name) VALUES ('API', 'API'), ('WOOCOMMERCE', 'WooCommerce') ON CONFLICT (code) DO NOTHING",
+        );
     }
 
     /**

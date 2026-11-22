@@ -173,6 +173,33 @@ final class PurchaseServiceTest extends TestCase
         $this->service()->create(self::input());
     }
 
+    /**
+     * Compra de outro canal (WOOCOMMERCE, usada pelo worker do webhook).
+     * Espera o canal buscado pelo código informado, a compra ligada a ele e o produto
+     * procurado no catálogo de external_id desse canal.
+     */
+    public function testCreatesPurchaseInTheGivenSalesChannel(): void
+    {
+        $wooCommerce = (new SalesChannel())->setCode(SalesChannel::WOOCOMMERCE)->setName('WooCommerce');
+
+        $this->salesChannelRepository = $this->createMock(SalesChannelRepository::class);
+        $this->salesChannelRepository->expects($this->once())
+            ->method('findOneBy')
+            ->with(['code' => 'WOOCOMMERCE'])
+            ->willReturn($wooCommerce);
+
+        $this->productRepository = $this->createMock(ProductRepository::class);
+        $this->productRepository->expects($this->once())
+            ->method('findOneBySalesChannelAndExternalId')
+            ->with('WOOCOMMERCE', 'CAM-001')
+            ->willReturn(null);
+
+        $purchase = $this->service()->create(self::input(), SalesChannel::WOOCOMMERCE);
+
+        self::assertSame($wooCommerce, $purchase->getSalesChannel());
+        self::assertSame($wooCommerce, $purchase->getItems()->first()->getProduct()->getExternalIds()->first()->getSalesChannel());
+    }
+
     // =========================================================================
     // Compra: dados e totais
     // =========================================================================
