@@ -43,6 +43,127 @@ docker compose up -d --build -V
 Na primeira subida a loja leva alguns minutos para ficar pronta (o container `wp_cli` instala e configura tudo):
 acompanhe com `docker compose logs -f wp_cli`, que termina com "Pronto!".
 
+## API
+
+Base: http://localhost:8088. Todas as rotas exigem `Authorization: Bearer <token>`, seja o token do login, seja o
+`API_ACCESS_TOKEN` (em dev, `dev-api-access-token`); detalhes em [Login](#login). Corpo e respostas em JSON, com
+chaves em `snake_case`. **Valores monetários são sempre inteiros em centavos** (`25000` = R$ 250,00).
+
+### Principais endpoints
+
+| Método | Rota | Descrição |
+|---|---|---|
+| `POST` | `/api/auth/login` | Login; devolve o token (pública) |
+| `GET` | `/api/auth/me` · `POST /api/auth/logout` | Usuário logado · encerra a sessão |
+| `POST` | `/api/purchases` | **Processa uma compra** (201; 409 se o código de referência já existe) |
+| `GET` | `/api/purchases` | **Lista e filtra compras** (paginado) |
+| `GET` | `/api/purchases/{id}` | Detalhe de uma compra, com cliente e itens |
+| `GET` | `/api/reports/summary` | **Totais e médias** de compras, descontos e produtos |
+| `GET` | `/api/reports/customers` | **Total e média de compras por cliente** (ranking) |
+| `GET` | `/api/reports/products` | **Total e média de compras por produto** (ranking) |
+| `GET` | `/api/reports/timeline` | Compras e descontos por dia, semana ou mês (gráfico do dashboard) |
+| `GET` `POST` | `/api/products` | Lista (`search`, `page`, `per_page`) · cadastra produto |
+| `GET` `PUT` `DELETE` | `/api/products/{id}` | Detalhe · edita · remove (409 se já foi vendido) |
+| `POST` `DELETE` | `/api/products/{id}/image` | Envia (multipart, campo `image`) · remove a imagem |
+| `POST` | `/api/webhooks/woocommerce` | Pedidos do WooCommerce (assinatura HMAC, sem token) |
+
+### Processar uma compra: `POST /api/purchases`
+
+```bash
+curl -X POST http://localhost:8088/api/purchases \
+  -H "Authorization: Bearer dev-api-access-token" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reference_code": "PED-1001",
+    "purchased_at": "2026-11-21T14:30:00-03:00",
+    "notes": "Produto enviado para o cliente por SEDEX",
+    "customer": { "name": "João Silva", "email": "joao.silva@email.com", "cpf": "529.982.247-25" },
+    "products": [
+      { "external_id": "CHU-001", "name": "Chuteira", "quantity": 2, "unit_price": 25000, "discount": 5000 },
+      { "external_id": "BOL-001", "name": "Bola", "quantity": 1, "unit_price": 15990 }
+    ]
+  }'
+```
+
+| Campo | Regra |
+|---|---|
+| `reference_code` | Obrigatório e único. **Uma segunda compra com o mesmo código é recusada** (`409`) e nada é gravado |
+| `purchased_at` | Obrigatório, ISO 8601. Gravado em UTC |
+| `notes` | Opcional (observações) |
+| `customer` | `name`, `email` e **um** documento: `cpf` (pessoa física) ou `cnpj` + `trade_name` opcional (pessoa jurídica). CPF/CNPJ são validados; o cliente é encontrado pelo documento e tem nome e e-mail atualizados |
+| `products[]` | Pelo menos um. `external_id` (código no canal), `name`, `quantity` > 0, `unit_price`; `discount` (do item) e `internal_code` (código do catálogo) são opcionais |
+
+O **valor** e o **desconto** da compra não são enviados: são calculados a partir dos itens
+(`valor = Σ (quantity × unit_price − discount)`, `desconto = Σ discount`), para nunca ficarem inconsistentes com os
+itens. Resposta `201` com a compra criada; `422` com a lista `violations` (campo + mensagem) se algo for inválido.
+
+### Consultar compras: `GET /api/purchases`
+
+Todos os filtros são opcionais e combináveis:
+
+| Parâmetro | Filtro |
+|---|---|
+| `reference_code` | Parte do código de referência (sem diferenciar maiúsculas) |
+| `customer_name` · `customer_email` | Parte do nome (ou razão social / nome fantasia) · parte do e-mail |
+| `customer_document` | CPF ou CNPJ completo, com ou sem máscara |
+| `date_from` · `date_to` | Período (inclusive): `2026-11-01` ou ISO 8601 com hora |
+| `amount_min` · `amount_max` | Faixa do valor total, em centavos (inclusive) |
+| `page` · `per_page` | Paginação (padrão 1 e 20; `per_page` até 100) |
+
+```bash
+curl "http://localhost:8088/api/purchases?customer_name=silva&date_from=2026-11-01&amount_min=10000" \
+  -H "Authorization: Bearer dev-api-access-token"
+```
+
+```json
+{
+  "data": [{ "id": 46, "reference_code": "PED-1001", "sales_channel": "API", "amount": 60990, "discount": 5000,
+             "purchased_at": "2026-11-21T17:30:00+00:00", "notes": "...", "customer": { "...": "..." },
+             "items": [{ "product_id": 5, "name": "Chuteira", "quantity": 2, "unit_price": 25000, "discount": 5000, "total_price": 45000 }] }],
+  "meta": { "page": 1, "per_page": 20, "total": 1, "total_pages": 1 }
+}
+```
+
+### Relatórios (dados agregados)
+
+`GET /api/reports/summary`:
+
+```json
+{
+  "purchases_count": 46,
+  "amount":   { "total": 4701880, "average": 102215 },
+  "discount": { "total": 12000,   "average": 261 },
+  "products": { "total": 4713880, "average": 22235, "units_sold": 212 }
+}
+```
+
+`amount` são os valores das compras; `discount`, os descontos; `products`, o valor dos itens antes do desconto
+(a média é por unidade vendida: `total ÷ units_sold`).
+
+`GET /api/reports/customers` e `GET /api/reports/products`: rankings paginados com `page`, `limit` (1 a 100),
+`sort` (`total`, `average` e `count` para clientes; `total`, `average` e `quantity` para produtos) e
+`order` (`asc` ou `desc`).
+
+```json
+{ "data": [{ "customer": { "id": 3, "name": "Maria Souza", "...": "..." }, "purchases_count": 6, "total": 1145620, "average": 190937 }],
+  "meta": { "page": 1, "limit": 20, "total": 13, "total_pages": 1 } }
+
+{ "data": [{ "product": { "id": 7, "name": "Camisa Retrô 1962", "internal_code": "CAM-001" }, "quantity_sold": 24, "purchases_count": 9, "total": 958260, "average": 39928 }],
+  "meta": { "page": 1, "limit": 20, "total": 11, "total_pages": 1 } }
+```
+
+`GET /api/reports/timeline?interval=month` (`day`, `week` ou `month`):
+
+```json
+{ "interval": "month", "data": [{ "period": "2026-11", "start": "2026-11-01", "end": "2026-11-30", "purchases_count": 13, "amount": 1155520, "discount": 3000 }] }
+```
+
+### Erros
+
+Formato único (`title`, `status`, `detail` e, nos erros de validação, `violations`), com mensagens em português:
+`401` sem token ou token inválido, `404` recurso inexistente, `409` conflito (compra duplicada, código de produto
+repetido), `422` dados inválidos. Erros `500` nunca expõem detalhes internos.
+
 ## Webhook do WooCommerce
 
 `POST /api/webhooks/woocommerce` recebe os pedidos criados no WooCommerce:
@@ -213,6 +334,26 @@ montagem dos filtros e tratamento de erros da API (`src/services/purchases.test.
 docker compose exec frontend npm test             # roda uma vez
 docker compose exec frontend npm run test:watch   # reexecuta ao salvar
 ```
+
+### Análise estática
+
+```bash
+docker compose exec backend vendor/bin/phpstan analyse   # PHPStan nível 6, com as extensões de Symfony, Doctrine e PHPUnit
+docker compose exec frontend npm run lint                # oxlint
+docker compose exec frontend npm run build               # checagem de tipos do TypeScript
+```
+
+### CI
+
+O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo pull request para a `main` (e a cada
+push na `main`), com dois jobs em paralelo:
+
+- **backend**: PHP 8.4 + PostgreSQL 16 como serviço; `composer validate`, PHPStan, validação do mapeamento do
+  Doctrine e os testes unitários e de integração;
+- **frontend**: Node 24; oxlint, checagem de tipos + build e Vitest.
+
+Para o PR só poder ser mesclado com o CI verde, ative em *Settings → Branches → Branch protection rules* da `main`
+a opção *Require status checks to pass* com os dois jobs.
 
 ## Comandos úteis
 

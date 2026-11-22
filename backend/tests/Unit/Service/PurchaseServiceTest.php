@@ -397,7 +397,6 @@ final class PurchaseServiceTest extends TestCase
 
         $externalIds = $product->getExternalIds()->toArray();
         self::assertCount(1, $externalIds);
-        self::assertInstanceOf(ProductExternalId::class, $externalIds[0]);
         self::assertSame('CAM-001', $externalIds[0]->getExternalId());
         self::assertSame($this->apiChannel, $externalIds[0]->getSalesChannel());
         self::assertSame($product, $externalIds[0]->getProduct());

@@ -1,0 +1,111 @@
+# Roda os testes e a análise estática em todo pull request para a main (e a cada push na main).
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# Um push novo no mesmo PR cancela a execução anterior
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (PHPStan + PHPUnit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    services:
+      # Banco dos testes de integração: o próprio teste cria o "app_test" e roda as migrations
+      database:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: app
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      # No docker-compose o host é "database"; aqui o Postgres é um serviço exposto em localhost
+      DATABASE_URL: postgresql://app:app@127.0.0.1:5432/app?serverVersion=16&charset=utf8
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, intl, amqp
+          coverage: pcov
+          tools: composer:v2
+
+      - name: Cache do Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Instalar dependências
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Validar composer.json
+        run: composer validate --no-check-publish
+
+      # O PHPStan lê o container do Symfony (serviços, parâmetros) a partir deste cache
+      - name: Gerar o container do Symfony
+        run: php bin/console cache:warmup --env=dev
+
+      - name: Análise estática (PHPStan)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G --error-format=github
+
+      - name: Validar o mapeamento do Doctrine
+        run: php bin/console doctrine:schema:validate --skip-sync --env=test
+
+      - name: Testes unitários
+        run: php bin/phpunit --testsuite unit
+
+      - name: Testes de integração
+        run: php bin/phpunit --testsuite integration
+
+  frontend:
+    name: Frontend (oxlint + TypeScript + Vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Análise estática (oxlint)
+        run: npm run lint
+
+      - name: Checagem de tipos e build
+        run: npm run build
+
+      - name: Testes (Vitest)
+        run: npm test

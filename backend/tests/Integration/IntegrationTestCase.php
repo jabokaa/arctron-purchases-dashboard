@@ -123,6 +123,8 @@ abstract class IntegrationTestCase extends WebTestCase
      * @param array<string, mixed> $payload
      *
      * @return array{status: int, body: array<string, mixed>}
+     *
+     * @phpstan-impure cada chamada é uma requisição nova; sem isso o PHPStan supõe que duas chamadas iguais devolvem o mesmo resultado
      */
     protected function postPurchase(array $payload): array
     {

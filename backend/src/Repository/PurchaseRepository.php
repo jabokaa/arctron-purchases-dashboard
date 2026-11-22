@@ -160,6 +160,8 @@ class PurchaseRepository extends ServiceEntityRepository
     /**
      * O OffsetPaginator faz a paginação certa mesmo com o join dos itens (que repete a compra em várias linhas)
      * e conta o total de compras que batem com os filtros.
+     *
+     * @return WindowPage<Purchase>
      */
     private function paginate(QueryBuilder $queryBuilder, int $pageNumber, int $pageSize): WindowPage
     {

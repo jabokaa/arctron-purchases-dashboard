@@ -1,0 +1,13 @@
+# Análise estática do backend: docker compose exec backend vendor/bin/phpstan analyse
+# As extensões (Symfony, Doctrine, PHPUnit) são carregadas sozinhas pelo phpstan/extension-installer.
+parameters:
+    level: 6
+    paths:
+        - src
+        - tests
+    excludePaths:
+        - src/DataFixtures/images
+    tmpDir: var/cache/phpstan
+    symfony:
+        # Gerado pelo "php bin/console cache:warmup --env=dev"; permite ao PHPStan conhecer os serviços do container
+        containerXmlPath: var/cache/dev/App_KernelDevDebugContainer.xml
