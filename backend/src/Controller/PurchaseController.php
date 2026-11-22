@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Dto\PurchaseFilterInput;
 use App\Dto\PurchaseInput;
 use App\Dto\PurchaseOutput;
+use App\Service\PurchaseSearchServiceInterface;
 use App\Service\PurchaseServiceInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Attribute\MapQueryString;
 use Symfony\Component\HttpKernel\Attribute\MapRequestPayload;
 use Symfony\Component\Routing\Attribute\Route;
 
@@ -17,7 +20,7 @@ use Symfony\Component\Routing\Attribute\Route;
  * Endpoints de compras.
  *
  * O controller fica "magro": só recebe a requisição e devolve a resposta.
- * A regra de negócio (salvar cliente e compra) fica no PurchaseService,
+ * A regra de negócio fica nos services (PurchaseService para gravar, PurchaseSearchService para consultar),
  * e os erros (422, 409, 500...) são convertidos em JSON pelo ApiExceptionListener.
  */
 #[Route('/api/purchases', name: 'api_purchases_', format: 'json')]
@@ -25,7 +28,23 @@ final class PurchaseController extends AbstractController
 {
     public function __construct(
         private readonly PurchaseServiceInterface $purchaseService,
+        private readonly PurchaseSearchServiceInterface $purchaseSearchService,
     ) {
+    }
+
+    /**
+     * Consulta compras com filtros opcionais na query string, paginadas.
+     *
+     * O #[MapQueryString] converte a query string (snake_case) em PurchaseFilterInput e valida.
+     * Sem nenhum parâmetro, usa o objeto padrão (sem filtros, página 1).
+     * Filtro inválido → 422 (por padrão o Symfony usaria 404, por isso o validationFailedStatusCode).
+     */
+    #[Route('', name: 'list', methods: ['GET'])]
+    public function list(
+        #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)]
+        PurchaseFilterInput $filter = new PurchaseFilterInput(),
+    ): JsonResponse {
+        return $this->json($this->purchaseSearchService->search($filter));
     }
 
     /**

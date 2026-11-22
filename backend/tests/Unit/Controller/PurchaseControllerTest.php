@@ -457,14 +457,14 @@ final class PurchaseControllerTest extends WebTestCase
     }
 
     /**
-     * Método HTTP errado (GET em vez de POST).
+     * Método HTTP sem rota (DELETE; a rota só aceita GET para consultar e POST para criar).
      * Espera 405.
      */
-    public function testRejectsGetMethod(): void
+    public function testRejectsUnsupportedMethod(): void
     {
         $this->purchaseService->expects($this->never())->method('create');
 
-        $this->client->request('GET', '/api/purchases');
+        $this->client->request('DELETE', '/api/purchases');
 
         self::assertSame(405, $this->client->getResponse()->getStatusCode());
         self::assertSame('Método HTTP não permitido para esta rota.', $this->decodeResponse()['detail']);
