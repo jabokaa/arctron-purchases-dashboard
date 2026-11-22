@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Entity\Product;
 use App\Entity\PurchaseItem;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -16,6 +17,20 @@ class PurchaseItemRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, PurchaseItem::class);
+    }
+
+    /**
+     * Indica se o produto já apareceu em alguma compra (usado para impedir que um produto vendido seja removido).
+     */
+    public function existsForProduct(Product $product): bool
+    {
+        return null !== $this->createQueryBuilder('purchaseItem')
+            ->select('purchaseItem.id')
+            ->where('purchaseItem.product = :product')
+            ->setParameter('product', $product)
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     /**

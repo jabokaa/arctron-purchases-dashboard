@@ -74,6 +74,22 @@ Os dados vêm de `DEFAULT_USER_NAME`, `DEFAULT_USER_EMAIL` e `DEFAULT_USER_PASSW
 O token vale `AUTH_TOKEN_TTL` segundos (padrão 8 h) e é enviado como `Authorization: Bearer <token>`.
 No banco fica só o hash SHA-256 do token. O front chama `/api` pelo proxy do Vite (sem CORS).
 
+## Produtos de teste
+
+Seeder com 11 artigos de futebol (chuteiras, bolas, luvas, camisas da Seleção Brasileira...), com imagem:
+
+```bash
+docker compose exec backend php bin/console doctrine:fixtures:load --append --group=products
+```
+
+Cada produto também recebe o seu código no canal `API` (igual ao código interno, ex.: `CHU-001`),
+então uma compra pelo `POST /api/purchases` com `"external_id": "CHU-001"` usa o produto cadastrado.
+As imagens são fotos com licença livre do Wikimedia Commons; autor e licença de cada uma estão em
+`backend/src/DataFixtures/ProductFixtures.php`.
+
+CRUD do catálogo: `GET/POST /api/products` e `GET/PUT/DELETE /api/products/{id}`
+(campos `name`, `internal_code` e `image_url`; produto que já foi vendido não pode ser removido).
+
 ## Testes
 
 ```bash

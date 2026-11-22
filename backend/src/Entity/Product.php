@@ -31,6 +31,9 @@ class Product
     #[ORM\Column(length: 255, options: ['comment' => 'Nome do produto'])]
     private string $name;
 
+    #[ORM\Column(length: 2048, nullable: true, options: ['comment' => 'Endereço (URL) da imagem do produto, opcional'])]
+    private ?string $imageUrl = null;
+
     #[ORM\Column(options: ['comment' => 'Data de criação do registro'])]
     private \DateTimeImmutable $createdAt;
 
@@ -62,6 +65,18 @@ class Product
     public function getId(): ?int
     {
         return $this->id;
+    }
+
+    public function getImageUrl(): ?string
+    {
+        return $this->imageUrl;
+    }
+
+    public function setImageUrl(?string $imageUrl): static
+    {
+        $this->imageUrl = $imageUrl;
+
+        return $this;
     }
 
     public function getInternalCode(): ?string

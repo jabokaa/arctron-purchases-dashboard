@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
+use App\Dto\ProductFilterInput;
 use App\Entity\Product;
 use App\Enum\ProductReportSort;
 use App\Enum\SortOrder;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\ParameterType;
+use Doctrine\ORM\Tools\Pagination\OffsetPaginator;
+use Doctrine\ORM\Tools\Pagination\Window;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -19,6 +22,55 @@ class ProductRepository extends ServiceEntityRepository
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, Product::class);
+    }
+
+    /**
+     * Lista do catálogo, paginada e em ordem alfabética, buscando por parte do nome ou do código interno
+     * (sem diferenciar maiúsculas). Já carrega os códigos de cada canal de venda (uma consulta só).
+     *
+     * @return array{items: list<Product>, total: int}
+     */
+    public function search(ProductFilterInput $filter): array
+    {
+        $queryBuilder = $this->createQueryBuilder('product')
+            ->addSelect('externalId', 'salesChannel')
+            // Ordena pelo nome em minúsculas: a ordem não depende da configuração do banco
+            // (com algumas, "Chuteira Society" viria antes de "Chuteira de Campo" por causa do S maiúsculo)
+            ->addSelect('LOWER(product.name) AS HIDDEN sortName')
+            ->leftJoin('product.externalIds', 'externalId')
+            ->leftJoin('externalId.salesChannel', 'salesChannel')
+            ->orderBy('sortName', 'ASC')
+            ->addOrderBy('product.id', 'ASC');
+
+        if (null !== $filter->search && '' !== trim($filter->search)) {
+            $queryBuilder->andWhere('LOWER(product.name) LIKE :search OR LOWER(product.internalCode) LIKE :search')
+                // Escapa % e _ digitados pelo usuário, para não virarem curingas do LIKE
+                ->setParameter('search', '%'.addcslashes(mb_strtolower(trim($filter->search)), '%_\\').'%');
+        }
+
+        // O OffsetPaginator conta PRODUTOS (e não linhas do join com os códigos dos canais)
+        $page = (new OffsetPaginator(fetchJoinCollection: true))
+            ->paginate($queryBuilder, Window::fromPageNumberAndSize($filter->page, $filter->perPage));
+
+        return [
+            'items' => array_values($page->getItems()),
+            'total' => $page->getTotalCount(),
+        ];
+    }
+
+    /**
+     * Busca um produto pelo id, já com os códigos de cada canal de venda. Retorna null se não existir.
+     */
+    public function findWithExternalIds(int $id): ?Product
+    {
+        return $this->createQueryBuilder('product')
+            ->addSelect('externalId', 'salesChannel')
+            ->leftJoin('product.externalIds', 'externalId')
+            ->leftJoin('externalId.salesChannel', 'salesChannel')
+            ->where('product.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 
     /**
