@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Service;
 use App\Dto\ReportTimelineOutput;
 use App\Enum\TimelineInterval;
 use App\Repository\CustomerRepository;
+use App\Repository\ProductRepository;
 use App\Repository\PurchaseItemRepository;
 use App\Repository\PurchaseRepository;
 use App\Service\ReportService;
@@ -39,7 +40,7 @@ final class ReportTimelineServiceTest extends TestCase
             ->with(TimelineInterval::Week)
             ->willReturn([]);
 
-        $result = (new ReportService($purchases, $this->createStub(PurchaseItemRepository::class), $this->createStub(CustomerRepository::class)))->timeline(TimelineInterval::Week);
+        $result = (new ReportService($purchases, $this->createStub(PurchaseItemRepository::class), $this->createStub(CustomerRepository::class), $this->createStub(ProductRepository::class)))->timeline(TimelineInterval::Week);
 
         self::assertSame('week', $result->interval);
     }
@@ -124,7 +125,7 @@ final class ReportTimelineServiceTest extends TestCase
         $purchases = $this->createStub(PurchaseRepository::class);
         $purchases->method('timeline')->willReturn($periods);
 
-        return (new ReportService($purchases, $this->createStub(PurchaseItemRepository::class), $this->createStub(CustomerRepository::class)))->timeline($interval);
+        return (new ReportService($purchases, $this->createStub(PurchaseItemRepository::class), $this->createStub(CustomerRepository::class), $this->createStub(ProductRepository::class)))->timeline($interval);
     }
 
     /**

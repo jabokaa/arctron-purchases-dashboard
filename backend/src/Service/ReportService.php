@@ -5,12 +5,14 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\CustomerReportFilterInput;
+use App\Dto\ProductReportFilterInput;
 use App\Dto\ReportRankingOutput;
 use App\Dto\ReportSummaryOutput;
 use App\Dto\ReportTimelineOutput;
 use App\Entity\CompanyCustomer;
 use App\Enum\TimelineInterval;
 use App\Repository\CustomerRepository;
+use App\Repository\ProductRepository;
 use App\Repository\PurchaseItemRepository;
 use App\Repository\PurchaseRepository;
 
@@ -25,6 +27,7 @@ final class ReportService implements ReportServiceInterface
         private readonly PurchaseRepository $purchases,
         private readonly PurchaseItemRepository $purchaseItems,
         private readonly CustomerRepository $customers,
+        private readonly ProductRepository $products,
     ) {}
 
     /**
@@ -104,6 +107,30 @@ final class ReportService implements ReportServiceInterface
                     'average' => $row['average'],
                 ];
             }, $ranking['items']),
+            meta: self::paginationMeta($filter->page, $filter->limit, $ranking['total']),
+        );
+    }
+
+    /**
+     * Ranking dos produtos pelas vendas (unidades, compras em que aparece, valor total e preço médio
+     * por unidade), paginado. Os números vêm prontos do banco; aqui é montada a resposta.
+     */
+    public function products(ProductReportFilterInput $filter): ReportRankingOutput
+    {
+        $ranking = $this->products->salesRanking($filter->sort(), $filter->order(), $filter->page, $filter->limit);
+
+        return new ReportRankingOutput(
+            data: array_map(static fn (array $row): array => [
+                'product' => [
+                    'id' => $row['id'],
+                    'name' => $row['name'],
+                    'internal_code' => $row['internalCode'],
+                ],
+                'quantity_sold' => $row['quantitySold'],
+                'purchases_count' => $row['purchasesCount'],
+                'total' => $row['total'],
+                'average' => $row['average'],
+            ], $ranking['items']),
             meta: self::paginationMeta($filter->page, $filter->limit, $ranking['total']),
         );
     }

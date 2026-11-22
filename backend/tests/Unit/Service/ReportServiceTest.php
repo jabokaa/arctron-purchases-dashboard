@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Service;
 
 use App\Repository\CustomerRepository;
+use App\Repository\ProductRepository;
 use App\Repository\PurchaseItemRepository;
 use App\Repository\PurchaseRepository;
 use App\Service\ReportService;
@@ -69,6 +70,6 @@ final class ReportServiceTest extends TestCase
         $purchaseItems = $this->createStub(PurchaseItemRepository::class);
         $purchaseItems->method('productTotals')->willReturn($productTotals);
 
-        return new ReportService($purchases, $purchaseItems, $this->createStub(CustomerRepository::class));
+        return new ReportService($purchases, $purchaseItems, $this->createStub(CustomerRepository::class), $this->createStub(ProductRepository::class));
     }
 }

@@ -9,6 +9,7 @@ use App\Dto\ReportRankingOutput;
 use App\Enum\CustomerReportSort;
 use App\Enum\SortOrder;
 use App\Repository\CustomerRepository;
+use App\Repository\ProductRepository;
 use App\Repository\PurchaseItemRepository;
 use App\Repository\PurchaseRepository;
 use App\Service\ReportService;
@@ -137,6 +138,7 @@ final class ReportCustomersServiceTest extends TestCase
             $this->createStub(PurchaseRepository::class),
             $this->createStub(PurchaseItemRepository::class),
             $customers,
+            $this->createStub(ProductRepository::class),
         );
     }
 

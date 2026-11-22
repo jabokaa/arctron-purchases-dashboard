@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\CustomerReportFilterInput;
+use App\Dto\ProductReportFilterInput;
 use App\Dto\ReportRankingOutput;
 use App\Dto\ReportSummaryOutput;
 use App\Dto\ReportTimelineOutput;
@@ -22,4 +23,6 @@ interface ReportServiceInterface
     public function timeline(TimelineInterval $interval): ReportTimelineOutput;
 
     public function customers(CustomerReportFilterInput $filter): ReportRankingOutput;
+
+    public function products(ProductReportFilterInput $filter): ReportRankingOutput;
 }

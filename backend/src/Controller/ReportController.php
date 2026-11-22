@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Dto\CustomerReportFilterInput;
+use App\Dto\ProductReportFilterInput;
 use App\Dto\TimelineFilterInput;
 use App\Service\ReportServiceInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -63,5 +64,19 @@ final class ReportController extends AbstractController
         CustomerReportFilterInput $filter = new CustomerReportFilterInput(),
     ): JsonResponse {
         return $this->json($this->reportService->customers($filter));
+    }
+
+    /**
+     * Ranking dos produtos: unidades vendidas, compras em que aparece, valor total e preço médio por unidade.
+     * Parâmetros: page, limit (máx. 100), sort (total, average, quantity) e order (asc, desc).
+     * Sem parâmetros: os 20 produtos com maior valor vendido. Top 5 da home: ?limit=5.
+     * Parâmetro inválido → 422.
+     */
+    #[Route('/products', name: 'products', methods: ['GET'])]
+    public function products(
+        #[MapQueryString(validationFailedStatusCode: Response::HTTP_UNPROCESSABLE_ENTITY)]
+        ProductReportFilterInput $filter = new ProductReportFilterInput(),
+    ): JsonResponse {
+        return $this->json($this->reportService->products($filter));
     }
 }
