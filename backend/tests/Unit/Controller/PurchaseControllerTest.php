@@ -12,6 +12,7 @@ use App\Entity\PurchaseItem;
 use App\Entity\SalesChannel;
 use App\Exception\DuplicatePurchaseException;
 use App\Service\PurchaseServiceInterface;
+use App\Tests\Support\TestUser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\IgnoreDeprecations;
 use PHPUnit\Framework\MockObject\MockObject;
@@ -41,6 +42,7 @@ final class PurchaseControllerTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = static::createClient();
+        $this->client->loginUser(TestUser::create(), 'api');
 
         // Troca o service real pelo mock dentro do container do Symfony
         $this->purchaseService = $this->createMock(PurchaseServiceInterface::class);

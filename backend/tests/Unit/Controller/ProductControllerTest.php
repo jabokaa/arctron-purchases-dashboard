@@ -14,6 +14,7 @@ use App\Exception\InvalidImageException;
 use App\Exception\ProductHasSalesException;
 use App\Exception\ProductNotFoundException;
 use App\Service\ProductServiceInterface;
+use App\Tests\Support\TestUser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -41,6 +42,7 @@ final class ProductControllerTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = static::createClient();
+        $this->client->loginUser(TestUser::create(), 'api');
 
         // Troca o service real pelo mock dentro do container do Symfony
         $this->productService = $this->createMock(ProductServiceInterface::class);

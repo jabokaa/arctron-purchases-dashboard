@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration;
 
+use App\Entity\User;
 use Doctrine\DBAL\Connection;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Console\Application;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
  * Base dos testes de integração: banco de dados real, sem mocks.
@@ -27,6 +30,9 @@ abstract class IntegrationTestCase extends WebTestCase
 
     protected KernelBrowser $client;
 
+    /** As rotas /api exigem login: por padrão o cliente dos testes já vem autenticado (o AuthApiTest desliga isso) */
+    protected bool $authenticated = true;
+
     protected function setUp(): void
     {
         if (!self::$databaseCreated) {
@@ -36,6 +42,30 @@ abstract class IntegrationTestCase extends WebTestCase
 
         $this->client = static::createClient();
         $this->clearTables();
+        if ($this->authenticated) {
+            $this->authenticateClient();
+        }
+    }
+
+    /**
+     * Cadastra um usuário, faz o login de verdade (POST /api/auth/login) e passa a enviar o token
+     * em todas as requisições do cliente, como o front faz.
+     */
+    private function authenticateClient(): void
+    {
+        $container = static::getContainer();
+        $user = (new User())->setName('Usuário de Teste')->setEmail('teste@cbf.com.br');
+        $user->setPassword($container->get(UserPasswordHasherInterface::class)->hashPassword($user, 'senha-de-teste'));
+
+        $em = $container->get(EntityManagerInterface::class);
+        $em->persist($user);
+        $em->flush();
+        $em->clear();
+
+        $this->client->request('POST', '/api/auth/login', server: ['CONTENT_TYPE' => 'application/json'], content: json_encode(['email' => 'teste@cbf.com.br', 'password' => 'senha-de-teste'], \JSON_THROW_ON_ERROR));
+        $token = json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR)['token'];
+
+        $this->client->setServerParameter('HTTP_AUTHORIZATION', 'Bearer '.$token);
     }
 
     /**

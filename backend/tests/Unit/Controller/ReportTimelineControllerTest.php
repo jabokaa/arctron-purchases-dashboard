@@ -7,6 +7,7 @@ namespace App\Tests\Unit\Controller;
 use App\Dto\ReportTimelineOutput;
 use App\Enum\TimelineInterval;
 use App\Service\ReportServiceInterface;
+use App\Tests\Support\TestUser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -33,6 +34,7 @@ final class ReportTimelineControllerTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = static::createClient();
+        $this->client->loginUser(TestUser::create(), 'api');
 
         // Troca o service real pelo mock dentro do container do Symfony
         $this->reportService = $this->createMock(ReportServiceInterface::class);

@@ -74,6 +74,12 @@ Os dados vêm de `DEFAULT_USER_NAME`, `DEFAULT_USER_EMAIL` e `DEFAULT_USER_PASSW
 O token vale `AUTH_TOKEN_TTL` segundos (padrão 8 h) e é enviado como `Authorization: Bearer <token>`.
 No banco fica só o hash SHA-256 do token. O front chama `/api` pelo proxy do Vite (sem CORS).
 
+**Todas as rotas `/api` exigem o token** (sem ele, ou com token inválido/expirado: `401` em JSON). As únicas exceções
+são o `POST /api/auth/login` e o `POST /api/webhooks/woocommerce`, que não tem como enviar o token e se autentica
+pela assinatura HMAC do corpo (`401` se for inválida). A regra fica no `access_control` do
+`backend/config/packages/security.yaml`. As imagens em `/uploads/...` são arquivos estáticos e continuam abertas
+(para o `<img>` funcionar).
+
 ## Produtos de teste
 
 Seeder com 11 artigos de futebol (chuteiras, bolas, luvas, camisas da Seleção Brasileira...), com imagem:

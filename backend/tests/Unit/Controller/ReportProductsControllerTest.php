@@ -9,6 +9,7 @@ use App\Dto\ReportRankingOutput;
 use App\Enum\ProductReportSort;
 use App\Enum\SortOrder;
 use App\Service\ReportServiceInterface;
+use App\Tests\Support\TestUser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -35,6 +36,7 @@ final class ReportProductsControllerTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = static::createClient();
+        $this->client->loginUser(TestUser::create(), 'api');
 
         // Troca o service real pelo mock dentro do container do Symfony
         $this->reportService = $this->createMock(ReportServiceInterface::class);

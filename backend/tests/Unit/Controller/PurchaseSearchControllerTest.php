@@ -13,6 +13,7 @@ use App\Entity\Purchase;
 use App\Entity\PurchaseItem;
 use App\Entity\SalesChannel;
 use App\Service\PurchaseSearchServiceInterface;
+use App\Tests\Support\TestUser;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -42,6 +43,7 @@ final class PurchaseSearchControllerTest extends WebTestCase
     protected function setUp(): void
     {
         $this->client = static::createClient();
+        $this->client->loginUser(TestUser::create(), 'api');
 
         // Troca o service real pelo mock dentro do container do Symfony
         $this->searchService = $this->createMock(PurchaseSearchServiceInterface::class);

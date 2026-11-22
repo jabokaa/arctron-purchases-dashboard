@@ -19,6 +19,9 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  */
 final class AuthApiTest extends IntegrationTestCase
 {
+    // Aqui o cliente começa sem token: o teste faz o login ele mesmo
+    protected bool $authenticated = false;
+
     private const EMAIL = 'admin@cbf.com.br';
     private const PASSWORD = 'senha-secreta';
 

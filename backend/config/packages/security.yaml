@@ -31,11 +31,15 @@ security:
             lazy: true
             provider: app_user_provider
 
-    # Só a primeira regra que bate com a URL é aplicada.
-    # As demais rotas /api (compras, relatórios, webhook) continuam públicas por enquanto.
+    # Só a primeira regra que bate com a URL é aplicada. Todas as rotas /api exigem o token do login
+    # (Authorization: Bearer ...), exceto:
+    # - o próprio login;
+    # - o webhook do WooCommerce, que não tem como enviar o token: ele se autentica pela assinatura
+    #   HMAC do corpo (X-WC-Webhook-Signature), conferida no controller (401 se for inválida).
     access_control:
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/auth, roles: ROLE_USER }
+        - { path: ^/api/webhooks/, roles: PUBLIC_ACCESS }
+        - { path: ^/api, roles: ROLE_USER }
 
 when@test:
     security:
