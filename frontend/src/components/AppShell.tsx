@@ -12,20 +12,19 @@ import { useState, type ReactNode } from 'react'
 import cbfLogo from '../assets/cbf-logo.svg'
 import type { User } from '../services/auth'
 
-export type PageId = 'dashboard' | 'products' | 'customers'
+export type PageId = 'dashboard' | 'purchases' | 'products' | 'customers'
 
 type MenuItem = {
-  id: PageId | null
+  id: PageId
   label: string
   icon: LucideIcon
 }
 
-// Itens sem `id` ainda não têm tela: aparecem desabilitados
 const MENU: MenuItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'purchases', label: 'Compras', icon: ShoppingCart },
   { id: 'products', label: 'Produtos', icon: Package },
   { id: 'customers', label: 'Clientes', icon: Users },
-  { id: null, label: 'Compras', icon: ShoppingCart },
 ]
 
 type Props = {
@@ -86,25 +85,9 @@ function AppShell({ user, page, onNavigate, onLogout, children }: Props) {
             Menu
           </p>
           {MENU.map(({ id, label, icon: Icon }) => {
-            const active = id !== null && id === page
+            const active = id === page
             const base =
               'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition'
-
-            if (id === null) {
-              return (
-                <div
-                  key={label}
-                  aria-disabled="true"
-                  className={`${base} cursor-not-allowed text-navy-200/40`}
-                >
-                  <Icon className="size-[18px]" />
-                  <span className="flex-1">{label}</span>
-                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide uppercase">
-                    Em breve
-                  </span>
-                </div>
-              )
-            }
 
             return (
               <button

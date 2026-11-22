@@ -34,7 +34,7 @@ export function useAsync<T>(
           data: previous?.data ?? null,
           error:
             err instanceof AuthError
-              ? err.message
+              ? (err.violations?.[0]?.message ?? err.message)
               : 'Não foi possível carregar os dados.',
         }))
       })

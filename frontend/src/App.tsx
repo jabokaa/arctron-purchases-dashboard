@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import AppShell, { type PageId } from './components/AppShell'
 import CustomersPage from './pages/Customers/CustomersPage'
 import DashboardPage from './pages/Dashboard/DashboardPage'
+import PurchasesPage from './pages/Purchases/PurchasesPage'
 import ProductsPage, { type ProductsTab } from './pages/Products/ProductsPage'
 import LoginPage from './pages/Login/LoginPage'
 import { currentUser, logout, type User } from './services/auth'
@@ -48,6 +49,7 @@ function App() {
           }}
         />
       )}
+      {page === 'purchases' && <PurchasesPage onUnauthorized={handleLogout} />}
       {page === 'products' && (
         <ProductsPage
           key={productsTab}
