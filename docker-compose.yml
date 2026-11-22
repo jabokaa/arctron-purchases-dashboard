@@ -33,8 +33,13 @@ services:
       timeout: 5s
       retries: 20
 
+  # O servidor web é o CMD do backend/Dockerfile. Assim que o container sobe (o banco já está pronto: depends_on
+  # abaixo), o post_start roda as migrations. Num banco novo elas também cadastram os dados iniciais; num banco
+  # que já existe, só as novas rodam.
   backend:
     build: ./backend
+    post_start:
+      - command: php bin/console doctrine:migrations:migrate --no-interaction --allow-no-migration
     volumes:
       - ./backend:/app
       # vendor/ instalado no build da imagem (ver backend/Dockerfile); sem isto a pasta local o esconderia.

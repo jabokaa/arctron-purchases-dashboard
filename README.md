@@ -15,8 +15,12 @@ docker-compose.yml
 
 ```bash
 docker compose up -d --build
-docker compose exec backend php bin/console doctrine:migrations:migrate -n
 ```
+
+As migrations rodam sozinhas quando o container do backend sobe (`post_start` no `docker-compose.yml`), com o banco
+já pronto. Num banco novo, elas também cadastram os dados iniciais (usuário padrão, produtos e compras de exemplo);
+num banco que já existe, só as migrations novas rodam. Para conferir:
+`docker compose exec backend php bin/console doctrine:migrations:status`.
 
 As dependências do backend (`composer install`) são instaladas no build da imagem, em `/app/vendor`, que no
 container é um volume separado da pasta local. Depois de mudar o `composer.json`/`composer.lock`, suba com `-V`
