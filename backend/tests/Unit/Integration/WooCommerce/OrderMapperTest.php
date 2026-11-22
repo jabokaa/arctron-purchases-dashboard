@@ -155,6 +155,25 @@ final class OrderMapperTest extends TestCase
     }
 
     /**
+     * SKU dos itens: é o código interno do catálogo.
+     * Espera o SKU como internal_code (o external_id continua sendo o id do WooCommerce), e SKU vazio ou ausente como null.
+     */
+    public function testMapsSkuToInternalCode(): void
+    {
+        $order = self::order();
+        $order['line_items'][0]['sku'] = 'CAM-001';
+        $order['line_items'][1]['sku'] = '  ';
+        $order['line_items'][] = ['name' => 'Sem SKU', 'product_id' => 7, 'quantity' => 1, 'subtotal' => '10.00', 'total' => '10.00'];
+
+        $items = $this->mapper->toPurchaseInput($order)->products;
+
+        self::assertSame('CAM-001', $items[0]->internalCode);
+        self::assertSame('101', $items[0]->externalId);
+        self::assertNull($items[1]->internalCode, 'SKU em branco vira null.');
+        self::assertNull($items[2]->internalCode, 'Sem o campo sku, também null.');
+    }
+
+    /**
      * Item de produto apagado no WooCommerce (product_id 0) e sem quantidade.
      * Espera external_id e valor unitário nulos, para a validação apontar o erro.
      */

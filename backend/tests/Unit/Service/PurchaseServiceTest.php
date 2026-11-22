@@ -79,7 +79,7 @@ final class PurchaseServiceTest extends TestCase
         $this->salesChannelRepository->method('findOneBy')->willReturn($this->apiChannel);
 
         $this->productRepository = $this->createStub(ProductRepository::class);
-        $this->productRepository->method('findOneBySalesChannelAndExternalId')->willReturn(null);
+        $this->productRepository->method('findByExternalIdOrInternalCode')->willReturn([]);
 
         $this->individualCustomerRepository = $this->createStub(IndividualCustomerRepository::class);
         $this->individualCustomerRepository->method('findOneBy')->willReturn(null);
@@ -190,9 +190,9 @@ final class PurchaseServiceTest extends TestCase
 
         $this->productRepository = $this->createMock(ProductRepository::class);
         $this->productRepository->expects($this->once())
-            ->method('findOneBySalesChannelAndExternalId')
-            ->with('WOOCOMMERCE', 'CAM-001')
-            ->willReturn(null);
+            ->method('findByExternalIdOrInternalCode')
+            ->with('WOOCOMMERCE', 'CAM-001', null)
+            ->willReturn([]);
 
         $purchase = $this->service()->create(self::input(), SalesChannel::WOOCOMMERCE);
 
@@ -366,17 +366,19 @@ final class PurchaseServiceTest extends TestCase
     public function testReusesExistingProduct(): void
     {
         $existing = (new Product())->setName('Camiseta (cadastro)');
+        $existing->addExternalId((new ProductExternalId())->setSalesChannel($this->apiChannel)->setExternalId('CAM-001'));
         $this->productRepository = $this->createMock(ProductRepository::class);
         $this->productRepository->expects($this->once())
-            ->method('findOneBySalesChannelAndExternalId')
-            ->with('API', 'CAM-001')
-            ->willReturn($existing);
+            ->method('findByExternalIdOrInternalCode')
+            ->with('API', 'CAM-001', null)
+            ->willReturn([$existing]);
 
         $purchase = $this->service()->create(self::input());
 
         self::assertSame($existing, $purchase->getItems()->first()->getProduct());
         self::assertSame('Camiseta (cadastro)', $existing->getName(), 'O nome do produto cadastrado não deve ser alterado.');
         self::assertNotContains($existing, $this->persisted);
+        self::assertCount(1, $existing->getExternalIds(), 'Nenhum vínculo novo.');
     }
 
     /**
@@ -410,8 +412,8 @@ final class PurchaseServiceTest extends TestCase
     {
         $this->productRepository = $this->createMock(ProductRepository::class);
         $this->productRepository->expects($this->once())
-            ->method('findOneBySalesChannelAndExternalId')
-            ->willReturn(null);
+            ->method('findByExternalIdOrInternalCode')
+            ->willReturn([]);
 
         $purchase = $this->service()->create(self::input(products: [
             new ProductInput(externalId: '777', name: 'Tênis', quantity: 1, unitPrice: 3000),
@@ -424,6 +426,89 @@ final class PurchaseServiceTest extends TestCase
 
         $persistedProducts = array_filter($this->persisted, static fn (object $entity): bool => $entity instanceof Product);
         self::assertCount(1, $persistedProducts);
+    }
+
+    /**
+     * external_id ainda desconhecido no canal, mas com o código interno de um produto do catálogo (ex.: SKU do WooCommerce).
+     * Espera que o produto do catálogo seja usado, sem criar outro, e que ganhe o vínculo com o external_id no canal.
+     */
+    public function testUsesCatalogProductFoundByInternalCode(): void
+    {
+        $catalog = (new Product())->setName('Camisa 1962 (catálogo)')->setInternalCode('CAM-001');
+        $this->productRepository = $this->createMock(ProductRepository::class);
+        $this->productRepository->expects($this->once())
+            ->method('findByExternalIdOrInternalCode')
+            ->with('API', '26', 'CAM-001')
+            ->willReturn([$catalog]);
+
+        $purchase = $this->service()->create(self::input(products: [
+            new ProductInput(externalId: '26', name: 'Camisa 1962', quantity: 1, unitPrice: 39990, internalCode: 'CAM-001'),
+        ]));
+
+        self::assertSame($catalog, $purchase->getItems()->first()->getProduct());
+        self::assertSame('Camisa 1962 (catálogo)', $catalog->getName(), 'O nome do produto do catálogo não muda.');
+        self::assertNotContains($catalog, $this->persisted);
+
+        $externalIds = $catalog->getExternalIds()->toArray();
+        self::assertCount(1, $externalIds);
+        self::assertSame('26', $externalIds[0]->getExternalId());
+        self::assertSame($this->apiChannel, $externalIds[0]->getSalesChannel());
+    }
+
+    /**
+     * Produto do catálogo encontrado pelo código interno, mas que já tem outro código no mesmo canal.
+     * Espera que ele seja usado sem um segundo vínculo no canal (o banco permite um código por produto em cada canal).
+     */
+    public function testDoesNotAddSecondCodeInSameChannel(): void
+    {
+        $catalog = (new Product())->setName('Camisa 1962')->setInternalCode('CAM-001');
+        $catalog->addExternalId((new ProductExternalId())->setSalesChannel($this->apiChannel)->setExternalId('CAM-001'));
+        $this->productRepository = $this->createStub(ProductRepository::class);
+        $this->productRepository->method('findByExternalIdOrInternalCode')->willReturn([$catalog]);
+
+        $purchase = $this->service()->create(self::input(products: [
+            new ProductInput(externalId: '26', name: 'Camisa 1962', quantity: 1, unitPrice: 39990, internalCode: 'CAM-001'),
+        ]));
+
+        self::assertSame($catalog, $purchase->getItems()->first()->getProduct());
+        self::assertCount(1, $catalog->getExternalIds());
+        self::assertSame('CAM-001', $catalog->getExternalIds()->first()->getExternalId());
+    }
+
+    /**
+     * A consulta encontra dois produtos: um pelo external_id no canal e outro (do catálogo) pelo código interno.
+     * Espera o produto do external_id, em qualquer ordem que a consulta devolver, sem mexer no outro.
+     */
+    public function testPrefersProductFoundByExternalId(): void
+    {
+        $byExternalId = (new Product())->setName('Camisa (já vinculada)');
+        $byExternalId->addExternalId((new ProductExternalId())->setSalesChannel($this->apiChannel)->setExternalId('26'));
+        $byInternalCode = (new Product())->setName('Camisa (catálogo)')->setInternalCode('CAM-001');
+        $this->productRepository = $this->createStub(ProductRepository::class);
+        $this->productRepository->method('findByExternalIdOrInternalCode')->willReturn([$byInternalCode, $byExternalId]);
+
+        $purchase = $this->service()->create(self::input(products: [
+            new ProductInput(externalId: '26', name: 'Camisa', quantity: 1, unitPrice: 39990, internalCode: 'CAM-001'),
+        ]));
+
+        self::assertSame($byExternalId, $purchase->getItems()->first()->getProduct());
+        self::assertCount(0, $byInternalCode->getExternalIds());
+    }
+
+    /**
+     * Código interno que não existe no catálogo.
+     * Espera um produto novo com esse código interno, além do vínculo com o canal.
+     */
+    public function testNewProductKeepsInternalCode(): void
+    {
+        $purchase = $this->service()->create(self::input(products: [
+            new ProductInput(externalId: '77', name: 'Meião', quantity: 1, unitPrice: 2990, internalCode: 'MEI-001'),
+        ]));
+
+        $product = $purchase->getItems()->first()->getProduct();
+        self::assertSame('MEI-001', $product->getInternalCode());
+        self::assertContains($product, $this->persisted);
+        self::assertSame('77', $product->getExternalIds()->first()->getExternalId());
     }
 
     // =========================================================================

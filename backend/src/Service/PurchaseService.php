@@ -125,29 +125,59 @@ final class PurchaseService implements PurchaseServiceInterface
     }
 
     /**
-     * Procura o produto pelo external_id no canal de venda.
-     * Se não existir, cria o produto (com o nome recebido) e o vínculo com o canal.
+     * Procura o produto, nesta ordem:
+     * 1. pelo external_id no canal de venda;
+     * 2. pelo código interno do catálogo (internal_code, ex.: o SKU do WooCommerce). O produto encontrado ganha o
+     *    vínculo com o canal, e as próximas compras com o mesmo external_id já o encontram no passo 1;
+     * 3. se não encontrar, cria o produto (com o nome e o código interno recebidos) e o vínculo com o canal.
+     * Sem o passo 2, um pedido do WooCommerce criava uma cópia do produto do catálogo, sem imagem.
      */
     private function findOrCreateProduct(ProductInput $input, SalesChannel $salesChannel): Product
     {
-        $product = $this->products->findOneBySalesChannelAndExternalId($salesChannel->getCode(), $input->externalId);
+        // Uma consulta só para os passos 1 e 2: volta o produto de cada condição que encontrar (no máximo dois)
+        $candidates = $this->products->findByExternalIdOrInternalCode($salesChannel->getCode(), $input->externalId, $input->internalCode);
 
-        if (null !== $product) {
-            return $product;
+        foreach ($candidates as $candidate) {
+            if (self::hasExternalId($candidate, $salesChannel, $input->externalId)) {
+                return $candidate;
+            }
         }
 
-        $product = (new Product())->setName($input->name);
+        $product = $candidates[0] ?? null;
 
-        // cascade: ['persist'] em Product::$externalIds salva o vínculo junto
-        $product->addExternalId(
-            (new ProductExternalId())
-                ->setSalesChannel($salesChannel)
-                ->setExternalId($input->externalId),
-        );
+        if (null === $product) {
+            $product = (new Product())
+                ->setName($input->name)
+                ->setInternalCode($input->internalCode);
 
-        $this->em->persist($product);
+            $this->em->persist($product);
+        }
+
+        // Cada produto tem no máximo um código por canal (UNIQUE no banco): se o produto do catálogo já tem
+        // outro código neste canal, ele é usado sem um novo vínculo.
+        if (!self::hasExternalId($product, $salesChannel)) {
+            // cascade: ['persist'] em Product::$externalIds salva o vínculo junto
+            $product->addExternalId(
+                (new ProductExternalId())
+                    ->setSalesChannel($salesChannel)
+                    ->setExternalId($input->externalId),
+            );
+        }
 
         return $product;
+    }
+
+    /** O produto tem este código no canal (ou, sem $code, qualquer código no canal) */
+    private static function hasExternalId(Product $product, SalesChannel $salesChannel, ?string $code = null): bool
+    {
+        foreach ($product->getExternalIds() as $externalId) {
+            if ($externalId->getSalesChannel()->getCode() === $salesChannel->getCode()
+                && (null === $code || $externalId->getExternalId() === $code)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

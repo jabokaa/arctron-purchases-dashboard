@@ -131,6 +131,9 @@ não for um arquivo local.
 
 Cada produto também recebe o seu código no canal `API` (igual ao código interno, ex.: `CHU-001`),
 então uma compra pelo `POST /api/purchases` com `"external_id": "CHU-001"` usa o produto cadastrado.
+Cada item da compra também aceita o `internal_code` (opcional): quando o `external_id` ainda não é conhecido no canal,
+o produto do catálogo com esse código é usado e ganha o `external_id`, em vez de virar um produto novo. É o que os
+pedidos do WooCommerce fazem com o SKU de cada item.
 As imagens são fotos com licença livre do Wikimedia Commons; autor e licença de cada uma estão em
 `backend/src/DataFixtures/ProductFixtures.php`.
 

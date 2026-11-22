@@ -74,20 +74,32 @@ class ProductRepository extends ServiceEntityRepository
     }
 
     /**
-     * Busca um produto pelo código que ele tem em um canal de venda.
-     * O par (canal, external_id) é único no banco, então retorna no máximo um produto.
+     * Busca, numa consulta só, os produtos que têm o código informado no canal de venda OU o código interno informado.
+     * O par (canal, external_id) e o código interno são únicos no banco, então retorna no máximo dois produtos
+     * (quem escolhe entre eles é o PurchaseService). Cada produto vem com todos os seus códigos e canais carregados.
+     *
+     * Os códigos são lidos por dois joins: "match" só filtra; "externalId" é o que preenche a coleção do produto.
+     * Filtrar e carregar pelo mesmo join deixaria a coleção só com os códigos que passaram no filtro.
+     *
+     * @return list<Product>
      */
-    public function findOneBySalesChannelAndExternalId(string $salesChannelCode, string $externalId): ?Product
+    public function findByExternalIdOrInternalCode(string $salesChannelCode, string $externalId, ?string $internalCode): array
     {
-        return $this->createQueryBuilder('product')
-            ->join('product.externalIds', 'externalId')
-            ->join('externalId.salesChannel', 'salesChannel')
-            ->where('salesChannel.code = :channel')
-            ->andWhere('externalId.externalId = :externalId')
+        $qb = $this->createQueryBuilder('product')
+            ->addSelect('externalId', 'salesChannel')
+            ->leftJoin('product.externalIds', 'externalId')
+            ->leftJoin('externalId.salesChannel', 'salesChannel')
+            ->leftJoin('product.externalIds', 'match')
+            ->leftJoin('match.salesChannel', 'matchChannel')
+            ->where('matchChannel.code = :channel AND match.externalId = :externalId')
             ->setParameter('channel', $salesChannelCode)
-            ->setParameter('externalId', $externalId)
-            ->getQuery()
-            ->getOneOrNullResult();
+            ->setParameter('externalId', $externalId);
+
+        if (null !== $internalCode) {
+            $qb->orWhere('product.internalCode = :internalCode')->setParameter('internalCode', $internalCode);
+        }
+
+        return $qb->getQuery()->getResult();
     }
 
     /**

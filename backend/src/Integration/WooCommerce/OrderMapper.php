@@ -22,7 +22,8 @@ use App\Util\Money;
  * - notes:          customer_note
  * - customer:       billing (nome, e-mail) + CPF/CNPJ do plugin "Brazilian Market on WooCommerce",
  *                   que fica em billing.cpf / billing.cnpj ou em meta_data (_billing_cpf / _billing_cnpj)
- * - products:       line_items (o id do produto no WooCommerce vira o external_id)
+ * - products:       line_items (o id do produto no WooCommerce vira o external_id e o SKU vira o internal_code,
+ *                   para o pedido usar o produto do catálogo com o mesmo código)
  */
 final class OrderMapper
 {
@@ -78,6 +79,7 @@ final class OrderMapper
      * - unit_price = subtotal ÷ quantidade (arredondado para o centavo, quando não divide exato);
      * - discount   = subtotal − total.
      * Produto com variação (ex.: tamanho) usa o id da variação, que é um item diferente no estoque.
+     * O SKU (quando preenchido) é o código interno do catálogo: com ele, o pedido usa o produto já cadastrado.
      *
      * @param array<string, mixed> $lineItem
      */
@@ -95,6 +97,7 @@ final class OrderMapper
             quantity: $quantity,
             unitPrice: null !== $subtotal && $quantity > 0 ? (int) round($subtotal / $quantity) : null,
             discount: null !== $subtotal && null !== $total ? $subtotal - $total : 0,
+            internalCode: self::filled($lineItem['sku'] ?? null),
         );
     }
 

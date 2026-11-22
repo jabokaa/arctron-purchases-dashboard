@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\Api;
 
+use App\DataFixtures\ProductFixtures;
 use App\Message\ProcessWooCommerceOrder;
 use App\MessageHandler\ProcessWooCommerceOrderHandler;
 use App\Tests\Integration\IntegrationTestCase;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Messenger\Transport\InMemory\InMemoryTransport;
 
 /**
@@ -123,6 +125,46 @@ final class WooCommerceWebhookApiTest extends IntegrationTestCase
             $this->connection()->fetchAssociative('SELECT legal_name, cnpj FROM company_customers'),
         );
         self::assertSame('processed', $this->connection()->fetchOne('SELECT status FROM integration_events'));
+    }
+
+    /**
+     * Pedidos da loja com um item do catálogo (o SKU é o código interno, como no woocommerce/scripts/catalog.php).
+     * Espera que as compras usem o produto cadastrado pelo seeder, com a imagem dele, sem criar produto novo, e que
+     * o produto ganhe o id do WooCommerce no canal WOOCOMMERCE (o segundo pedido já o encontra por esse id).
+     */
+    public function testOrderWithSkuUsesCatalogProduct(): void
+    {
+        $em = static::getContainer()->get(EntityManagerInterface::class);
+        static::getContainer()->get(ProductFixtures::class)->load($em);
+        $em->clear();
+
+        $order = self::order();
+        $order['line_items'] = [
+            ['id' => 1, 'name' => 'Camisa Retrô Seleção Brasileira 1962', 'product_id' => 26, 'variation_id' => 0, 'sku' => 'CAM-001', 'quantity' => 1, 'subtotal' => '399.90', 'total' => '399.90'],
+        ];
+        // Cada requisição reinicia o kernel (e a fila em memória): o worker roda depois de cada pedido
+        $this->sendWebhook($order, deliveryId: 'entrega-1');
+        $this->runWorker();
+        $order['id'] = 728;
+        $this->sendWebhook($order, deliveryId: 'entrega-2');
+        $this->runWorker();
+
+        self::assertSame(2, $this->countRows('purchases'));
+        self::assertSame(11, $this->countRows('products'), 'Nenhum produto novo além do catálogo.');
+        self::assertSame(
+            [['internal_code' => 'CAM-001', 'com_imagem' => true], ['internal_code' => 'CAM-001', 'com_imagem' => true]],
+            $this->connection()->fetchAllAssociative(
+                'SELECT p.internal_code, p.image_url IS NOT NULL AS com_imagem FROM purchase_items i JOIN products p ON p.id = i.product_id ORDER BY i.id',
+            ),
+        );
+        self::assertSame(
+            '26',
+            $this->connection()->fetchOne(
+                "SELECT e.external_id FROM product_external_ids e
+                 JOIN products p ON p.id = e.product_id JOIN sales_channels s ON s.id = e.sales_channel_id
+                 WHERE p.internal_code = 'CAM-001' AND s.code = 'WOOCOMMERCE'",
+            ),
+        );
     }
 
     /**

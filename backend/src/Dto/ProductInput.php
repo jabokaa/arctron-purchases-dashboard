@@ -9,8 +9,9 @@ use Symfony\Component\Validator\Constraints as Assert;
 /**
  * Um produto da compra (cada item da lista "products" do JSON).
  *
- * O produto é identificado pelo external_id (o código dele no canal de venda).
- * Se ainda não estiver cadastrado, o PurchaseService cria o produto usando o name.
+ * O produto é identificado pelo external_id (o código dele no canal de venda). Se o external_id ainda não for
+ * conhecido, o PurchaseService procura o produto pelo internal_code (código do catálogo) e, se também não
+ * encontrar, cria o produto usando o name.
  */
 final class ProductInput
 {
@@ -47,6 +48,14 @@ final class ProductInput
         #[Assert\PositiveOrZero(message: 'O desconto do item não pode ser negativo.')]
         #[Assert\LessThan(value: 1_000_000_000_000, message: 'O desconto do item é muito alto.')]
         public readonly int $discount = 0,
+
+        /**
+         * Código interno do produto no catálogo (SKU), opcional. Quando o external_id ainda não é conhecido no canal,
+         * o produto do catálogo com este código é usado (e ganha o vínculo com o canal), em vez de criar outro.
+         * Ex.: o WooCommerce envia o SKU de cada item, igual ao código interno do catálogo (CAM-001).
+         */
+        #[Assert\Length(max: 100, maxMessage: 'O código interno do produto deve ter no máximo {{ limit }} caracteres.')]
+        public readonly ?string $internalCode = null,
     ) {
         // Normaliza para string: 123 → "123"
         $this->externalId = null === $externalId ? null : (string) $externalId;

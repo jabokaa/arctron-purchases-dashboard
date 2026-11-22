@@ -126,5 +126,7 @@ docker compose down -v                                     # apaga tudo, inclusi
 ## Observações
 
 - A loja usa sempre o WordPress e o WooCommerce mais recentes (o WooCommerce atual exige o WordPress mais novo).
-- No backend o produto de um pedido é identificado pelo **id do produto no WooCommerce** (não pelo SKU), então os
-  produtos que chegam por esse canal aparecem separados dos do catálogo cadastrado no painel.
+- No backend o produto de um pedido é procurado primeiro pelo **id do produto no WooCommerce** e, se ainda não for
+  conhecido, pelo **SKU**, que é o código interno do catálogo do painel (ex.: `CAM-001`). Encontrado pelo SKU, o
+  produto do catálogo é usado (com a imagem dele) e ganha o id do WooCommerce, então os próximos pedidos o encontram
+  direto. Um produto sem SKU (ou com um SKU que não existe no catálogo) vira um produto novo no painel.
