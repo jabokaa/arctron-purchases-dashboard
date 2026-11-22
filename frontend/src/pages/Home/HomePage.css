@@ -25,6 +25,33 @@
   height: auto;
 }
 
+.home__menu {
+  display: flex;
+  flex: 1;
+  gap: 4px;
+  align-self: stretch;
+}
+
+.home__menu button {
+  padding: 0 16px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.8);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.home__menu button:hover {
+  color: #fff;
+}
+
+.home__menu button.is-active {
+  border-bottom-color: var(--cbf-yellow);
+  color: #fff;
+}
+
 .home__user {
   display: flex;
   align-items: center;
@@ -45,16 +72,6 @@
 
 .home__user button:hover {
   background: rgba(255, 255, 255, 0.1);
-}
-
-.home__main {
-  padding: 48px 24px;
-  text-align: center;
-}
-
-.home__main h1 {
-  margin: 0 0 8px;
-  color: var(--text-h);
 }
 
 @media (max-width: 560px) {

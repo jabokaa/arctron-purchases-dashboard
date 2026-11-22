@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import HomePage from './pages/Home/HomePage'
 import LoginPage from './pages/Login/LoginPage'
 import { currentUser, logout, type User } from './services/auth'
@@ -14,10 +14,10 @@ function App() {
       .finally(() => setLoading(false))
   }, [])
 
-  async function handleLogout() {
+  const handleLogout = useCallback(async () => {
     await logout().catch(() => undefined)
     setUser(null)
-  }
+  }, [])
 
   if (loading) return null
 

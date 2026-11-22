@@ -82,13 +82,29 @@ Seeder com 11 artigos de futebol (chuteiras, bolas, luvas, camisas da Seleção 
 docker compose exec backend php bin/console doctrine:fixtures:load --append --group=products
 ```
 
+As imagens ficam salvas no repositório, em `backend/src/DataFixtures/images/products/<código interno>.jpg`.
+O seeder as copia para `backend/public/uploads/products/`, como se tivessem sido enviadas pela tela (o banco guarda
+só o caminho, ex.: `/uploads/products/ab12….jpg`). Produto que já existe é mantido; só a imagem é copiada, se ainda
+não for um arquivo local.
+
 Cada produto também recebe o seu código no canal `API` (igual ao código interno, ex.: `CHU-001`),
 então uma compra pelo `POST /api/purchases` com `"external_id": "CHU-001"` usa o produto cadastrado.
 As imagens são fotos com licença livre do Wikimedia Commons; autor e licença de cada uma estão em
 `backend/src/DataFixtures/ProductFixtures.php`.
 
 CRUD do catálogo: `GET/POST /api/products` e `GET/PUT/DELETE /api/products/{id}`
-(campos `name`, `internal_code` e `image_url`; produto que já foi vendido não pode ser removido).
+(campos `name` e `internal_code`; produto que já foi vendido não pode ser removido).
+
+A imagem é enviada em arquivo, não como URL:
+
+| Endpoint | Descrição |
+|---|---|
+| `POST /api/products/{id}/image` | `multipart/form-data`, campo `image` (JPG, PNG, WebP ou GIF, até 2 MB). Troca a imagem anterior e apaga o arquivo antigo. 422 se não for imagem |
+| `DELETE /api/products/{id}/image` | Remove a imagem (e o arquivo) e devolve o produto |
+
+O tipo do arquivo é conferido pelo conteúdo. A resposta traz `image_url` com o caminho público
+(`/uploads/products/….jpg`), servido pelo próprio backend; o Vite repassa `/api` e `/uploads` para ele.
+Os arquivos ficam em `backend/public/uploads/` (fora do git) e são apagados junto com o produto.
 
 ## Testes
 

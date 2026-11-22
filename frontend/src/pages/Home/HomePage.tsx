@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import cbfLogo from '../../assets/cbf-logo.svg'
 import type { User } from '../../services/auth'
+import ProductsPage from '../Products/ProductsPage'
 import './HomePage.css'
 
 type Props = {
@@ -7,8 +9,14 @@ type Props = {
   onLogout: () => void
 }
 
-/** Tela provisória pós-login, até o dashboard ser construído */
+type Page = 'products'
+
+const MENU: { id: Page; label: string }[] = [{ id: 'products', label: 'Produtos' }]
+
+/** Estrutura pós-login: barra superior com menu e a tela da página ativa */
 function HomePage({ user, onLogout }: Props) {
+  const [page, setPage] = useState<Page>('products')
+
   return (
     <div className="home">
       <header className="home__bar">
@@ -16,6 +24,19 @@ function HomePage({ user, onLogout }: Props) {
           <img src={cbfLogo} alt="CBF" />
           <span>Painel de Compras</span>
         </div>
+        <nav className="home__menu" aria-label="Menu principal">
+          {MENU.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={item.id === page ? 'is-active' : undefined}
+              aria-current={item.id === page ? 'page' : undefined}
+              onClick={() => setPage(item.id)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </nav>
         <div className="home__user">
           <span>{user.name}</span>
           <button type="button" onClick={onLogout}>
@@ -23,9 +44,8 @@ function HomePage({ user, onLogout }: Props) {
           </button>
         </div>
       </header>
-      <main className="home__main">
-        <h1>Olá, {user.name}!</h1>
-        <p>Você está autenticado como {user.email}.</p>
+      <main>
+        {page === 'products' && <ProductsPage onUnauthorized={onLogout} />}
       </main>
     </div>
   )

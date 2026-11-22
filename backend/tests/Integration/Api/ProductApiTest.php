@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Tests\Integration\Api;
 
 use App\Tests\Integration\IntegrationTestCase;
+use App\Tests\Support\TestImage;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * Testes de integração do CRUD de produtos (/api/products), do jeito que o front usaria.
@@ -21,21 +23,21 @@ use App\Tests\Integration\IntegrationTestCase;
 final class ProductApiTest extends IntegrationTestCase
 {
     /**
-     * Criar produto com nome, código interno e imagem.
-     * Espera 201 com o produto criado e o registro no banco.
+     * Criar produto com nome e código interno.
+     * Espera 201 com o produto criado (ainda sem imagem) e o registro no banco.
      */
     public function testCreatesProduct(): void
     {
-        $response = $this->api('POST', '/api/products', ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001', 'image_url' => 'https://exemplo.com/chuteira.jpg']);
+        $response = $this->api('POST', '/api/products', ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001']);
 
         self::assertSame(201, $response['status']);
         self::assertIsInt($response['body']['id']);
-        self::assertSame(['Chuteira de Campo', 'CHU-001', 'https://exemplo.com/chuteira.jpg', []], [
+        self::assertSame(['Chuteira de Campo', 'CHU-001', null, []], [
             $response['body']['name'], $response['body']['internal_code'], $response['body']['image_url'], $response['body']['external_ids'],
         ]);
 
         self::assertSame(
-            ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001', 'image_url' => 'https://exemplo.com/chuteira.jpg'],
+            ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001', 'image_url' => null],
             $this->connection()->fetchAssociative('SELECT name, internal_code, image_url FROM products'),
         );
     }
@@ -54,10 +56,10 @@ final class ProductApiTest extends IntegrationTestCase
 
         self::assertSame('BOL-001', $this->api('GET', '/api/products/'.$id)['body']['internal_code']);
 
-        $updated = $this->api('PUT', '/api/products/'.$id, ['name' => 'Bola Oficial', 'internal_code' => 'BOL-002', 'image_url' => 'https://exemplo.com/bola.jpg']);
+        $updated = $this->api('PUT', '/api/products/'.$id, ['name' => 'Bola Oficial', 'internal_code' => 'BOL-002']);
         self::assertSame(200, $updated['status']);
         self::assertSame(
-            ['name' => 'Bola Oficial', 'internal_code' => 'BOL-002', 'image_url' => 'https://exemplo.com/bola.jpg'],
+            ['name' => 'Bola Oficial', 'internal_code' => 'BOL-002', 'image_url' => null],
             $this->connection()->fetchAssociative('SELECT name, internal_code, image_url FROM products WHERE id = ?', [$id]),
         );
 
@@ -135,21 +137,144 @@ final class ProductApiTest extends IntegrationTestCase
     }
 
     /**
-     * Dados inválidos (sem nome e imagem que não é endereço).
+     * Dados inválidos (sem nome e com código interno longo demais).
      * Espera 422 com os dois campos e nada gravado.
      */
     public function testRejectsInvalidData(): void
     {
-        $response = $this->api('POST', '/api/products', ['name' => '', 'image_url' => 'chuteira.jpg']);
+        $response = $this->api('POST', '/api/products', ['name' => '', 'internal_code' => str_repeat('A', 101)]);
 
         self::assertSame(422, $response['status']);
-        self::assertSame(['name', 'image_url'], array_column($response['body']['violations'], 'field'));
+        self::assertSame(['name', 'internal_code'], array_column($response['body']['violations'], 'field'));
         self::assertSame(0, $this->countRows('products'));
+    }
+
+    /**
+     * Enviar uma imagem, trocar por outra e remover o produto.
+     * Espera o caminho gravado no banco, o arquivo servido em disco, o arquivo antigo apagado na troca
+     * e a imagem apagada junto com o produto.
+     */
+    public function testUploadsReplacesAndDeletesImage(): void
+    {
+        $id = $this->api('POST', '/api/products', ['name' => 'Bola'])['body']['id'];
+
+        $first = $this->upload($id, self::pngFile());
+        self::assertSame(200, $first['status']);
+        self::assertMatchesRegularExpression('#^/uploads/products/[a-f0-9]{32}\.png$#', $first['body']['image_url']);
+        self::assertSame($first['body']['image_url'], $this->connection()->fetchOne('SELECT image_url FROM products WHERE id = ?', [$id]));
+        self::assertFileExists(self::diskPath($first['body']['image_url']));
+
+        $second = $this->upload($id, self::pngFile());
+        self::assertNotSame($first['body']['image_url'], $second['body']['image_url']);
+        self::assertFileDoesNotExist(self::diskPath($first['body']['image_url']), 'A imagem anterior é apagada na troca.');
+        self::assertFileExists(self::diskPath($second['body']['image_url']));
+
+        $this->client->request('DELETE', '/api/products/'.$id);
+        self::assertSame(204, $this->client->getResponse()->getStatusCode());
+        self::assertFileDoesNotExist(self::diskPath($second['body']['image_url']), 'A imagem é apagada junto com o produto.');
+    }
+
+    /**
+     * Remover só a imagem do produto.
+     * Espera image_url nulo no banco e o arquivo apagado, com o produto mantido.
+     */
+    public function testDeletesImageOnly(): void
+    {
+        $id = $this->api('POST', '/api/products', ['name' => 'Bola'])['body']['id'];
+        $path = $this->upload($id, self::pngFile())['body']['image_url'];
+
+        $response = $this->api('DELETE', '/api/products/'.$id.'/image');
+
+        self::assertSame(200, $response['status']);
+        self::assertNull($response['body']['image_url']);
+        self::assertNull($this->connection()->fetchOne('SELECT image_url FROM products WHERE id = ?', [$id]));
+        self::assertFileDoesNotExist(self::diskPath($path));
+        self::assertSame(1, $this->countRows('products'));
+    }
+
+    /**
+     * Atualizar o produto (PUT) depois de ter enviado a imagem.
+     * Espera a imagem mantida: o PUT só troca nome e código interno.
+     */
+    public function testUpdateKeepsImage(): void
+    {
+        $id = $this->api('POST', '/api/products', ['name' => 'Bola'])['body']['id'];
+        $path = $this->upload($id, self::pngFile())['body']['image_url'];
+
+        $this->api('PUT', '/api/products/'.$id, ['name' => 'Bola Oficial']);
+
+        self::assertSame($path, $this->connection()->fetchOne('SELECT image_url FROM products WHERE id = ?', [$id]));
+        self::assertFileExists(self::diskPath($path));
+    }
+
+    /**
+     * Arquivo de texto enviado com o tipo "image/png" (o tipo informado pelo navegador pode mentir).
+     * Espera 422 e nada gravado no banco nem no disco.
+     */
+    public function testRejectsFakeImage(): void
+    {
+        $id = $this->api('POST', '/api/products', ['name' => 'Bola'])['body']['id'];
+        $path = tempnam(sys_get_temp_dir(), 'fake');
+        file_put_contents($path, 'não sou um PNG');
+
+        $response = $this->upload($id, new UploadedFile($path, 'foto.png', 'image/png', null, true));
+
+        self::assertSame(422, $response['status']);
+        self::assertNull($this->connection()->fetchOne('SELECT image_url FROM products WHERE id = ?', [$id]));
+    }
+
+    /**
+     * Enviar imagem para produto que não existe.
+     * Espera 404.
+     */
+    public function testUploadReturnsNotFoundForUnknownProduct(): void
+    {
+        self::assertSame(404, $this->upload(999999, self::pngFile())['status']);
+    }
+
+    /**
+     * Imagem de produto que veio de um endereço externo (cadastro antigo).
+     * Espera que remover o produto não tente apagar nada do disco e que o produto saia normalmente.
+     */
+    public function testDeleteIgnoresExternalImageUrl(): void
+    {
+        $this->connection()->executeStatement("INSERT INTO products (name, image_url, created_at, updated_at) VALUES ('Antigo', 'https://exemplo.com/a.jpg', now(), now())");
+        $id = (int) $this->connection()->fetchOne('SELECT id FROM products');
+
+        $this->client->request('DELETE', '/api/products/'.$id);
+
+        self::assertSame(204, $this->client->getResponse()->getStatusCode());
     }
 
     // =========================================================================
     // Auxiliares
     // =========================================================================
+
+    private static function pngFile(): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'png');
+        file_put_contents($path, TestImage::pngBytes());
+
+        return new UploadedFile($path, 'foto.png', 'image/png', null, true);
+    }
+
+    private static function diskPath(string $publicPath): string
+    {
+        return static::getContainer()->getParameter('app.product_images_dir').'/'.basename($publicPath);
+    }
+
+    /**
+     * @return array{status: int, body: array<string, mixed>}
+     */
+    private function upload(int $id, UploadedFile $file): array
+    {
+        $this->client->request('POST', '/api/products/'.$id.'/image', files: ['image' => $file]);
+
+        return [
+            'status' => $this->client->getResponse()->getStatusCode(),
+            'body' => json_decode((string) $this->client->getResponse()->getContent(), true, flags: \JSON_THROW_ON_ERROR),
+        ];
+    }
 
     /**
      * @param array<string, mixed>|null $payload

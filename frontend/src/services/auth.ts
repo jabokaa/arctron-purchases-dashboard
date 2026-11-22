@@ -32,11 +32,12 @@ export class AuthError extends Error {
   }
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken()
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
-  if (init.body) headers.set('Content-Type', 'application/json')
+  // Com FormData (upload) o navegador define o Content-Type sozinho, com o boundary
+  if (typeof init.body === 'string') headers.set('Content-Type', 'application/json')
   if (token) headers.set('Authorization', `Bearer ${token}`)
 
   let response: Response

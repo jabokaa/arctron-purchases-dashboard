@@ -12,7 +12,7 @@ use App\Entity\ProductExternalId;
  *
  *   {
  *     "id": 1, "name": "Chuteira de Campo", "internal_code": "CHU-001",
- *     "image_url": "https://.../chuteira.jpg",
+ *     "image_url": "/uploads/products/3f2a....jpg",
  *     "external_ids": [ { "sales_channel": "API", "external_id": "CHU-001" } ],
  *     "created_at": "...", "updated_at": "..."
  *   }

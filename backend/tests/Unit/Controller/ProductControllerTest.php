@@ -10,6 +10,7 @@ use App\Dto\ProductOutput;
 use App\Dto\ProductSaveInput;
 use App\Entity\Product;
 use App\Exception\DuplicateProductCodeException;
+use App\Exception\InvalidImageException;
 use App\Exception\ProductHasSalesException;
 use App\Exception\ProductNotFoundException;
 use App\Service\ProductServiceInterface;
@@ -17,9 +18,11 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
- * Testes do CRUD de produtos (ProductController): GET/POST /api/products e GET/PUT/DELETE /api/products/{id}.
+ * Testes do CRUD de produtos (ProductController): GET/POST /api/products, GET/PUT/DELETE /api/products/{id}
+ * e a imagem do produto (POST/DELETE /api/products/{id}/image).
  *
  * O que é testado: se cada rota aceita os dados corretos, recusa os errados com 422 (um campo por vez),
  * chama o service com os valores certos e converte as respostas e os erros do service no status HTTP esperado
@@ -67,7 +70,7 @@ final class ProductControllerTest extends WebTestCase
         self::assertSame(200, $response['status']);
         self::assertSame(['page' => 1, 'per_page' => 20, 'total' => 1, 'total_pages' => 1], $response['body']['meta']);
         self::assertSame('Chuteira de Campo', $response['body']['data'][0]['name']);
-        self::assertSame('https://exemplo.com/chuteira.jpg', $response['body']['data'][0]['image_url']);
+        self::assertSame('/uploads/products/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg', $response['body']['data'][0]['image_url']);
     }
 
     /**
@@ -129,7 +132,7 @@ final class ProductControllerTest extends WebTestCase
 
         self::assertSame(200, $response['status']);
         self::assertSame(
-            ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001', 'image_url' => 'https://exemplo.com/chuteira.jpg', 'external_ids' => []],
+            ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001', 'image_url' => '/uploads/products/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg', 'external_ids' => []],
             array_intersect_key($response['body'], ['name' => 1, 'internal_code' => 1, 'image_url' => 1, 'external_ids' => 1]),
         );
     }
@@ -172,8 +175,7 @@ final class ProductControllerTest extends WebTestCase
         $this->productService->expects($this->once())
             ->method('create')
             ->with($this->callback(static fn (ProductSaveInput $input): bool => 'Chuteira de Campo' === $input->name
-                && 'CHU-001' === $input->internalCode
-                && 'https://exemplo.com/chuteira.jpg' === $input->imageUrl))
+                && 'CHU-001' === $input->internalCode))
             ->willReturn(ProductOutput::fromEntity(self::product()));
 
         $response = $this->request('POST', '/api/products', self::validPayload());
@@ -183,14 +185,14 @@ final class ProductControllerTest extends WebTestCase
     }
 
     /**
-     * Só o nome (código interno e imagem são opcionais).
+     * Só o nome (o código interno é opcional).
      * Espera 201 e os campos opcionais nulos.
      */
     public function testCreatesProductWithOnlyName(): void
     {
         $this->productService->expects($this->once())
             ->method('create')
-            ->with($this->callback(static fn (ProductSaveInput $input): bool => null === $input->internalCode && null === $input->imageUrl))
+            ->with($this->callback(static fn (ProductSaveInput $input): bool => null === $input->internalCode))
             ->willReturn(ProductOutput::fromEntity(self::product()));
 
         self::assertSame(201, $this->request('POST', '/api/products', ['name' => 'Bola'])['status']);
@@ -218,8 +220,6 @@ final class ProductControllerTest extends WebTestCase
      */
     public static function invalidFieldProvider(): iterable
     {
-        $invalidUrl = 'A imagem deve ser um endereço válido, começando com http:// ou https://.';
-
         // name é obrigatório
         yield 'nome vazio' => [['name' => ''], 'name', 'O nome do produto é obrigatório.'];
 
@@ -231,15 +231,6 @@ final class ProductControllerTest extends WebTestCase
 
         // internal_code tem no máximo 100 caracteres
         yield 'código longo demais' => [['internal_code' => str_repeat('A', 101)], 'internal_code', 'O código interno deve ter no máximo 100 caracteres.'];
-
-        // image_url precisa ser um endereço
-        yield 'imagem que não é endereço' => [['image_url' => 'chuteira.jpg'], 'image_url', $invalidUrl];
-
-        // image_url só aceita http e https
-        yield 'imagem com outro protocolo' => [['image_url' => 'ftp://exemplo.com/chuteira.jpg'], 'image_url', $invalidUrl];
-
-        // image_url precisa de domínio completo (com .com, .br...)
-        yield 'imagem sem domínio' => [['image_url' => 'http://localhost/chuteira.jpg'], 'image_url', 'A imagem deve ter um domínio completo (ex.: exemplo.com.br).'];
 
         // nome com tipo errado
         yield 'nome numérico' => [['name' => 123], 'name', 'Tipo inválido: esperado texto.'];
@@ -354,6 +345,111 @@ final class ProductControllerTest extends WebTestCase
     }
 
     // =========================================================================
+    // POST /api/products/{id}/image (enviar imagem)
+    // =========================================================================
+
+    /**
+     * Imagem PNG válida no campo "image".
+     * Espera 200, o service chamado com o arquivo enviado e o produto atualizado na resposta.
+     */
+    public function testUploadsImage(): void
+    {
+        $this->productService->expects($this->once())
+            ->method('setImage')
+            ->with(7, $this->callback(static fn (UploadedFile $file): bool => 'foto.png' === $file->getClientOriginalName()))
+            ->willReturn(ProductOutput::fromEntity(self::product()));
+
+        $this->client->request('POST', '/api/products/7/image', files: ['image' => self::pngUpload()]);
+
+        self::assertSame(200, $this->client->getResponse()->getStatusCode());
+        self::assertSame('/uploads/products/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg', json_decode((string) $this->client->getResponse()->getContent(), true)['image_url']);
+    }
+
+    /**
+     * Arquivo que não é imagem (texto).
+     * Espera 422 no campo "image" e o service nunca chamado.
+     */
+    public function testUploadRejectsNonImage(): void
+    {
+        $this->productService->expects($this->never())->method('setImage');
+
+        $path = tempnam(sys_get_temp_dir(), 'txt');
+        file_put_contents($path, 'isto não é uma imagem');
+
+        $this->client->request('POST', '/api/products/7/image', files: ['image' => new UploadedFile($path, 'nota.txt', 'text/plain', null, true)]);
+
+        $body = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+        self::assertContains(['field' => 'image', 'message' => 'O arquivo deve ser uma imagem JPG, PNG, WebP ou GIF.'], $body['violations']);
+    }
+
+    /**
+     * Requisição sem arquivo.
+     * Espera 422 e o service nunca chamado.
+     */
+    public function testUploadRequiresFile(): void
+    {
+        $this->productService->expects($this->never())->method('setImage');
+
+        $this->client->request('POST', '/api/products/7/image');
+
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+    }
+
+    /**
+     * Produto inexistente: o service lança ProductNotFoundException.
+     * Espera 404.
+     */
+    public function testUploadReturnsNotFound(): void
+    {
+        $this->productService->method('setImage')->willThrowException(new ProductNotFoundException(99));
+
+        $this->client->request('POST', '/api/products/99/image', files: ['image' => self::pngUpload()]);
+
+        self::assertSame(404, $this->client->getResponse()->getStatusCode());
+    }
+
+    /**
+     * Conteúdo recusado pelo service (ex.: arquivo corrompido com tipo de imagem): InvalidImageException.
+     * Espera 422 com a mensagem da exceção.
+     */
+    public function testUploadReturnsUnprocessableForInvalidContent(): void
+    {
+        $this->productService->method('setImage')->willThrowException(new InvalidImageException('O arquivo deve ser uma imagem JPG, PNG, WebP ou GIF.'));
+
+        $this->client->request('POST', '/api/products/7/image', files: ['image' => self::pngUpload()]);
+
+        self::assertSame(422, $this->client->getResponse()->getStatusCode());
+        self::assertSame('O arquivo deve ser uma imagem JPG, PNG, WebP ou GIF.', json_decode((string) $this->client->getResponse()->getContent(), true)['detail']);
+    }
+
+    // =========================================================================
+    // DELETE /api/products/{id}/image (remover imagem)
+    // =========================================================================
+
+    /**
+     * Produto com imagem.
+     * Espera 200 com o produto atualizado.
+     */
+    public function testDeletesImage(): void
+    {
+        $this->productService->expects($this->once())->method('removeImage')->with(7)->willReturn(ProductOutput::fromEntity(self::product()));
+
+        self::assertSame(200, $this->request('DELETE', '/api/products/7/image')['status']);
+    }
+
+    /**
+     * Produto inexistente.
+     * Espera 404.
+     */
+    public function testDeleteImageReturnsNotFound(): void
+    {
+        $this->productService->method('removeImage')->willThrowException(new ProductNotFoundException(99));
+
+        self::assertSame(404, $this->request('DELETE', '/api/products/99/image')['status']);
+    }
+
+    // =========================================================================
     // Auxiliares
     // =========================================================================
 
@@ -362,12 +458,20 @@ final class ProductControllerTest extends WebTestCase
      */
     private static function validPayload(): array
     {
-        return ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001', 'image_url' => 'https://exemplo.com/chuteira.jpg'];
+        return ['name' => 'Chuteira de Campo', 'internal_code' => 'CHU-001'];
+    }
+
+    private static function pngUpload(): UploadedFile
+    {
+        $path = tempnam(sys_get_temp_dir(), 'png');
+        file_put_contents($path, (string) base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', true));
+
+        return new UploadedFile($path, 'foto.png', 'image/png', null, true);
     }
 
     private static function product(): Product
     {
-        $product = (new Product())->setName('Chuteira de Campo')->setInternalCode('CHU-001')->setImageUrl('https://exemplo.com/chuteira.jpg');
+        $product = (new Product())->setName('Chuteira de Campo')->setInternalCode('CHU-001')->setImageUrl('/uploads/products/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.jpg');
         $product->onPrePersist();
 
         return $product;

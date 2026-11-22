@@ -130,7 +130,8 @@ final class ApiExceptionListener
 
         // Mensagens do próprio Symfony ao ler o corpo da requisição, traduzidas
         return match (true) {
-            '' === trim($requestBody) && $status < 500 && \in_array($status, [Response::HTTP_BAD_REQUEST, Response::HTTP_UNPROCESSABLE_ENTITY], true) => 'O corpo da requisição é obrigatório.',
+            // Não vale para exceções da aplicação (ex.: InvalidImageException, em upload multipart sem corpo): elas já trazem a mensagem certa
+            !$exception->getPrevious() instanceof \DomainException && '' === trim($requestBody) && $status < 500 && \in_array($status, [Response::HTTP_BAD_REQUEST, Response::HTTP_UNPROCESSABLE_ENTITY], true) => 'O corpo da requisição é obrigatório.',
             str_starts_with($message, 'Request payload contains invalid') => 'O corpo da requisição não é um JSON válido.',
             str_starts_with($message, 'Unsupported format') => 'Formato não suportado. Envie o corpo em JSON com o cabeçalho "Content-Type: application/json".',
             Response::HTTP_METHOD_NOT_ALLOWED === $status => 'Método HTTP não permitido para esta rota.',

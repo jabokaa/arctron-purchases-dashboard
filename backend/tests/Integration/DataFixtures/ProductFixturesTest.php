@@ -11,7 +11,7 @@ use Doctrine\ORM\EntityManagerInterface;
 /**
  * Testes do seeder de produtos (ProductFixtures).
  *
- * O que é testado: se o seeder cadastra os 11 artigos de futebol com nome, código interno e imagem,
+ * O que é testado: se o seeder cadastra os 11 artigos de futebol com nome, código interno e imagem copiada do repositório para a pasta de uploads,
  * cria o código de cada um no canal API (para as compras usarem os produtos cadastrados),
  * pode rodar de novo sem duplicar nada e não altera produto que já existia.
  *
@@ -21,7 +21,7 @@ final class ProductFixturesTest extends IntegrationTestCase
 {
     /**
      * Seeder em banco vazio.
-     * Espera os 11 produtos, todos com imagem https do Wikimedia Commons e com o código no canal API.
+     * Espera os 11 produtos, todos com a imagem copiada para a pasta de uploads e com o código no canal API.
      */
     public function testSeedsSportsProductsWithImages(): void
     {
@@ -39,7 +39,8 @@ final class ProductFixturesTest extends IntegrationTestCase
         self::assertEqualsCanonicalizing(ProductFixtures::internalCodes(), array_column($products, 'internal_code'));
 
         foreach ($products as $product) {
-            self::assertStringStartsWith('https://upload.wikimedia.org/', $product['image_url'], $product['name']);
+            self::assertMatchesRegularExpression('#^/uploads/products/[a-f0-9]{32}\.jpg$#', $product['image_url'], $product['name']);
+            self::assertFileExists(static::getContainer()->getParameter('app.product_images_dir').'/'.basename($product['image_url']), $product['name']);
             self::assertSame($product['internal_code'], $product['external_id'], 'O código no canal API é o próprio código interno.');
         }
 
@@ -49,7 +50,7 @@ final class ProductFixturesTest extends IntegrationTestCase
 
     /**
      * Seeder rodado duas vezes.
-     * Espera os mesmos 11 produtos, sem duplicar produtos nem códigos.
+     * Espera os mesmos 11 produtos, sem duplicar produtos, códigos nem imagens.
      */
     public function testCanRunTwiceWithoutDuplicating(): void
     {
@@ -58,11 +59,12 @@ final class ProductFixturesTest extends IntegrationTestCase
 
         self::assertSame(11, $this->countRows('products'));
         self::assertSame(11, $this->countRows('product_external_ids'));
+        self::assertSame(11, $this->countRows("products WHERE image_url LIKE '/uploads/products/%'"));
     }
 
     /**
      * Produto com o mesmo código interno já cadastrado (ex.: alterado pelo usuário).
-     * Espera que o seeder não o altere e cadastre só os outros.
+     * Espera que o seeder não altere o nome e cadastre só os outros (a imagem que faltava é copiada).
      */
     public function testDoesNotChangeExistingProducts(): void
     {
@@ -73,8 +75,50 @@ final class ProductFixturesTest extends IntegrationTestCase
         $this->runSeeder();
 
         self::assertSame('Minha Chuteira', $this->connection()->fetchOne("SELECT name FROM products WHERE internal_code = 'CHU-001'"));
-        self::assertNull($this->connection()->fetchOne("SELECT image_url FROM products WHERE internal_code = 'CHU-001'"));
         self::assertSame(11, $this->countRows('products'));
+    }
+
+    /**
+     * Produto cadastrado antes do upload, com a imagem como endereço externo.
+     * Espera a imagem copiada e trocada pelo arquivo local.
+     */
+    public function testDownloadsImageOfProductWithExternalUrl(): void
+    {
+        $this->connection()->executeStatement(
+            "INSERT INTO products (name, internal_code, image_url, created_at, updated_at) VALUES ('Chuteira', 'CHU-001', 'https://exemplo.com/a.jpg', now(), now())",
+        );
+
+        $this->runSeeder();
+
+        self::assertMatchesRegularExpression('#^/uploads/products/[a-f0-9]{32}\.jpg$#', (string) $this->connection()->fetchOne("SELECT image_url FROM products WHERE internal_code = 'CHU-001'"));
+    }
+
+    /**
+     * Produto que já tem arquivo local.
+     * Espera que rodar de novo mantenha o mesmo arquivo (sem copiar outra vez).
+     */
+    public function testKeepsExistingLocalImage(): void
+    {
+        $this->runSeeder();
+        $before = $this->connection()->fetchAllKeyValue('SELECT internal_code, image_url FROM products');
+
+        $this->runSeeder();
+
+        self::assertSame($before, $this->connection()->fetchAllKeyValue('SELECT internal_code, image_url FROM products'));
+    }
+
+    /**
+     * Cada produto do seeder tem o seu arquivo de imagem no repositório.
+     * Espera um JPG válido para cada código interno.
+     */
+    public function testEveryProductHasImageFileInRepository(): void
+    {
+        foreach (ProductFixtures::internalCodes() as $code) {
+            $file = \dirname(__DIR__, 3).'/src/DataFixtures/images/products/'.$code.'.jpg';
+
+            self::assertFileExists($file, $code);
+            self::assertSame('image/jpeg', (new \finfo(\FILEINFO_MIME_TYPE))->file($file), $code);
+        }
     }
 
     /**

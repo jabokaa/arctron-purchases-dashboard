@@ -10,18 +10,20 @@ use App\Dto\ProductOutput;
 use App\Dto\ProductSaveInput;
 use App\Entity\Product;
 use App\Exception\DuplicateProductCodeException;
+use App\Exception\InvalidImageException;
 use App\Exception\ProductHasSalesException;
 use App\Exception\ProductNotFoundException;
 use App\Repository\ProductRepository;
 use App\Repository\PurchaseItemRepository;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
  * Cadastro de produtos (CRUD do catálogo).
  *
  * Quando estes métodos são chamados, os dados já foram validados pelo controller
- * (#[MapRequestPayload] / #[MapQueryString]).
+ * (#[MapRequestPayload] / #[MapQueryString] / #[MapUploadedFile]).
  */
 final class ProductService implements ProductServiceInterface
 {
@@ -29,6 +31,7 @@ final class ProductService implements ProductServiceInterface
         private readonly EntityManagerInterface $em,
         private readonly ProductRepository $products,
         private readonly PurchaseItemRepository $purchaseItems,
+        private readonly ProductImageStorageInterface $images,
     ) {}
 
     public function list(ProductFilterInput $filter): ProductListOutput
@@ -84,6 +87,41 @@ final class ProductService implements ProductServiceInterface
         // Os códigos do produto em cada canal (product_external_ids) são removidos junto
         $this->em->remove($product);
         $this->em->flush();
+
+        $this->images->remove($product->getImageUrl());
+    }
+
+    public function setImage(int $id, UploadedFile $file): ProductOutput
+    {
+        $product = $this->get($id);
+        $previous = $product->getImageUrl();
+
+        $path = $this->images->storeUploaded($file);
+        $product->setImageUrl($path);
+
+        try {
+            $this->em->flush();
+        } catch (\Throwable $e) {
+            $this->images->remove($path);
+
+            throw $e;
+        }
+
+        $this->images->remove($previous);
+
+        return ProductOutput::fromEntity($product);
+    }
+
+    public function removeImage(int $id): ProductOutput
+    {
+        $product = $this->get($id);
+        $previous = $product->getImageUrl();
+
+        $product->setImageUrl(null);
+        $this->em->flush();
+        $this->images->remove($previous);
+
+        return ProductOutput::fromEntity($product);
     }
 
     private function get(int $id): Product
@@ -92,7 +130,7 @@ final class ProductService implements ProductServiceInterface
     }
 
     /**
-     * Copia os dados recebidos para o produto. Código interno e imagem vazios viram null.
+     * Copia os dados recebidos para o produto. Código interno vazio vira null. A imagem não muda aqui.
      *
      * @throws DuplicateProductCodeException
      */
@@ -110,8 +148,7 @@ final class ProductService implements ProductServiceInterface
 
         $product
             ->setName(trim($input->name))
-            ->setInternalCode($internalCode)
-            ->setImageUrl(self::nullIfEmpty($input->imageUrl));
+            ->setInternalCode($internalCode);
     }
 
     /**

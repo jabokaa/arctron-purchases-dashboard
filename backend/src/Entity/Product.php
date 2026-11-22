@@ -31,7 +31,7 @@ class Product
     #[ORM\Column(length: 255, options: ['comment' => 'Nome do produto'])]
     private string $name;
 
-    #[ORM\Column(length: 2048, nullable: true, options: ['comment' => 'Endereço (URL) da imagem do produto, opcional'])]
+    #[ORM\Column(length: 2048, nullable: true, options: ['comment' => 'Caminho público da imagem enviada (/uploads/products/...) ou endereço externo, opcional'])]
     private ?string $imageUrl = null;
 
     #[ORM\Column(options: ['comment' => 'Data de criação do registro'])]
