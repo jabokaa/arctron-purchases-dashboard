@@ -8,6 +8,7 @@ use App\Dto\PurchaseFilterInput;
 use App\Entity\CompanyCustomer;
 use App\Entity\IndividualCustomer;
 use App\Entity\Purchase;
+use App\Enum\TimelineInterval;
 use App\Util\DocumentNumber;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\ORM\QueryBuilder;
@@ -55,6 +56,53 @@ class PurchaseRepository extends ServiceEntityRepository
             'discountTotal' => (int) $row['discount_total'],
             'discountAverage' => (int) $row['discount_average'],
         ];
+    }
+
+    /**
+     * Compras agrupadas por período (dia, semana ou mês), do mais antigo para o mais recente.
+     *
+     * Como funciona (SQL nativo do PostgreSQL, uma consulta só):
+     * 1. bounds: início do primeiro e do último período com compras (date_trunc arredonda a data
+     *    para o início do dia, da semana — segunda-feira — ou do mês);
+     * 2. periods: todos os períodos entre esses dois (generate_series), inclusive os sem compras;
+     * 3. junta as compras em cada período; período sem compras fica com 0 (COALESCE).
+     * Sem nenhuma compra, devolve lista vazia.
+     *
+     * As datas são as do banco (UTC).
+     *
+     * @return list<array{periodStart: \DateTimeImmutable, count: int, amount: int, discount: int}>
+     */
+    public function timeline(TimelineInterval $interval): array
+    {
+        $rows = $this->getEntityManager()->getConnection()->fetchAllAssociative(<<<'SQL'
+            WITH bounds AS (
+                SELECT
+                    date_trunc(:interval, MIN(purchased_at)) AS first_period,
+                    date_trunc(:interval, MAX(purchased_at)) AS last_period
+                FROM purchases
+            ),
+            periods AS (
+                SELECT generate_series(first_period, last_period, CAST('1 ' || :interval AS INTERVAL)) AS period_start
+                FROM bounds
+                WHERE first_period IS NOT NULL
+            )
+            SELECT
+                periods.period_start,
+                COUNT(purchases.id)                AS count,
+                COALESCE(SUM(purchases.amount), 0)   AS amount,
+                COALESCE(SUM(purchases.discount), 0) AS discount
+            FROM periods
+            LEFT JOIN purchases ON date_trunc(:interval, purchases.purchased_at) = periods.period_start
+            GROUP BY periods.period_start
+            ORDER BY periods.period_start
+        SQL, ['interval' => $interval->value]);
+
+        return array_map(static fn (array $row): array => [
+            'periodStart' => new \DateTimeImmutable($row['period_start'], new \DateTimeZone('UTC')),
+            'count' => (int) $row['count'],
+            'amount' => (int) $row['amount'],
+            'discount' => (int) $row['discount'],
+        ], $rows);
     }
 
     /**

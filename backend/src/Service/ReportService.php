@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Service;
 
 use App\Dto\ReportSummaryOutput;
+use App\Dto\ReportTimelineOutput;
+use App\Enum\TimelineInterval;
 use App\Repository\PurchaseItemRepository;
 use App\Repository\PurchaseRepository;
 
@@ -47,6 +49,25 @@ final class ReportService implements ReportServiceInterface
                 'average' => $productTotals['average'],
                 'units_sold' => $productTotals['unitsSold'],
             ],
+        );
+    }
+
+    /**
+     * Evolução das compras no tempo: quantidade, valor e descontos de cada período.
+     * O agrupamento é feito pelo banco; aqui cada período ganha o rótulo e as datas de início e fim.
+     */
+    public function timeline(TimelineInterval $interval): ReportTimelineOutput
+    {
+        return new ReportTimelineOutput(
+            interval: $interval->value,
+            data: array_map(static fn (array $period): array => [
+                'period' => $interval->label($period['periodStart']),
+                'start' => $period['periodStart']->format('Y-m-d'),
+                'end' => $interval->end($period['periodStart'])->format('Y-m-d'),
+                'purchases_count' => $period['count'],
+                'amount' => $period['amount'],
+                'discount' => $period['discount'],
+            ], $this->purchases->timeline($interval)),
         );
     }
 }
