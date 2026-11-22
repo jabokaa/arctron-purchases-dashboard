@@ -99,10 +99,10 @@
 .login__alert {
   margin-top: 24px;
   padding: 12px 14px;
-  border-left: 4px solid var(--cbf-green);
+  border-left: 4px solid var(--danger);
   border-radius: 6px;
-  background: rgba(25, 174, 71, 0.1);
-  color: var(--cbf-green-dark);
+  background: rgba(198, 40, 40, 0.08);
+  color: var(--danger);
   font-size: 14px;
 }
 

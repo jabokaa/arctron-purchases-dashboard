@@ -45,6 +45,35 @@ em `backend/.env.local` ou numa variável de ambiente.
 docker compose logs -f worker   # acompanhar o processamento dos pedidos
 ```
 
+## Login
+
+Depois de subir o projeto, rode as migrations e o seeder do usuário padrão:
+
+```bash
+docker compose exec backend php bin/console doctrine:migrations:migrate --no-interaction
+docker compose exec backend php bin/console doctrine:fixtures:load --append --group=users
+```
+
+> Use sempre `--append`: sem ele o Doctrine apaga **todas** as tabelas antes de rodar o seeder.
+> O seeder não duplica: se o usuário já existe, nada muda.
+
+| Usuário padrão | |
+|---|---|
+| E-mail | `admin@cbf.com.br` |
+| Senha  | `cbf@2026` |
+
+Os dados vêm de `DEFAULT_USER_NAME`, `DEFAULT_USER_EMAIL` e `DEFAULT_USER_PASSWORD` no `backend/.env`
+(em produção, troque a senha via `.env.local` ou variável de ambiente).
+
+| Endpoint | Auth | Descrição |
+|---|---|---|
+| `POST /api/auth/login` | pública | `{"email", "password"}` → `{"token", "token_type", "expires_at", "user"}` |
+| `GET /api/auth/me` | Bearer | usuário logado |
+| `POST /api/auth/logout` | Bearer | invalida o token (204) |
+
+O token vale `AUTH_TOKEN_TTL` segundos (padrão 8 h) e é enviado como `Authorization: Bearer <token>`.
+No banco fica só o hash SHA-256 do token. O front chama `/api` pelo proxy do Vite (sem CORS).
+
 ## Testes
 
 ```bash

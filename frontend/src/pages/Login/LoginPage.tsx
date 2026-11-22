@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import cbfLogo from '../../assets/cbf-logo.svg'
+import { AuthError, login, type User } from '../../services/auth'
 import './LoginPage.css'
 
 type FormErrors = {
@@ -29,28 +30,48 @@ function validate(email: string, password: string): FormErrors {
   return errors
 }
 
-function LoginPage() {
+type Props = {
+  onLogin: (user: User) => void
+}
+
+function LoginPage({ onLogin }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState<FormErrors>({})
   const [submitting, setSubmitting] = useState(false)
-  const [success, setSuccess] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    setSuccess(false)
+    setFormError(null)
 
     const validationErrors = validate(email, password)
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) return
 
-    // TODO: integrar com o endpoint de autenticação do backend.
     setSubmitting(true)
-    await new Promise((resolve) => setTimeout(resolve, 800))
-    setSubmitting(false)
-    setSuccess(true)
+    try {
+      onLogin(await login(email.trim(), password, remember))
+    } catch (error) {
+      if (error instanceof AuthError && error.violations?.length) {
+        const fieldErrors: FormErrors = {}
+        for (const violation of error.violations) {
+          if (violation.field === 'email' || violation.field === 'password') {
+            fieldErrors[violation.field] ??= violation.message
+          }
+        }
+        setErrors(fieldErrors)
+      } else {
+        setFormError(
+          error instanceof AuthError
+            ? error.message
+            : 'Ocorreu um erro inesperado. Tente novamente.',
+        )
+      }
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -79,10 +100,9 @@ function LoginPage() {
             <p>Acesse sua conta para continuar.</p>
           </header>
 
-          {success && (
-            <div className="login__alert" role="status">
-              Login simulado com sucesso. A integração com o backend ainda
-              não foi implementada.
+          {formError && (
+            <div className="login__alert" role="alert">
+              {formError}
             </div>
           )}
 

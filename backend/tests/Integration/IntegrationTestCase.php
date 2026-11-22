@@ -66,13 +66,13 @@ abstract class IntegrationTestCase extends WebTestCase
     }
 
     /**
-     * Deixa o banco vazio (só com os canais de venda API e WOOCOMMERCE) antes de cada teste.
+     * Deixa o banco vazio (sem usuários e só com os canais de venda API e WOOCOMMERCE) antes de cada teste.
      * RESTART IDENTITY reinicia os ids; CASCADE apaga junto as tabelas que dependem destas.
      */
     private function clearTables(): void
     {
         $this->connection()->executeStatement(
-            'TRUNCATE integration_events, purchase_items, purchases, product_external_ids, products, individual_customers, company_customers, customers RESTART IDENTITY CASCADE',
+            'TRUNCATE api_tokens, users, integration_events, purchase_items, purchases, product_external_ids, products, individual_customers, company_customers, customers RESTART IDENTITY CASCADE',
         );
         $this->connection()->executeStatement(
             "INSERT INTO sales_channels (code, name) VALUES ('API', 'API'), ('WOOCOMMERCE', 'WooCommerce') ON CONFLICT (code) DO NOTHING",
