@@ -362,7 +362,7 @@ final class ProductServiceTest extends TestCase
         $this->images->expects($this->once())->method('remove')->with(self::NEW_IMAGE);
 
         $this->em = $this->createMock(EntityManagerInterface::class);
-        $this->em->method('flush')->willThrowException(new \RuntimeException('banco fora do ar'));
+        $this->em->expects($this->once())->method('flush')->willThrowException(new \RuntimeException('banco fora do ar'));
 
         $this->expectException(\RuntimeException::class);
 

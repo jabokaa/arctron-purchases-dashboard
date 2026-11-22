@@ -404,7 +404,7 @@ final class ProductControllerTest extends WebTestCase
      */
     public function testUploadReturnsNotFound(): void
     {
-        $this->productService->method('setImage')->willThrowException(new ProductNotFoundException(99));
+        $this->productService->expects($this->once())->method('setImage')->willThrowException(new ProductNotFoundException(99));
 
         $this->client->request('POST', '/api/products/99/image', files: ['image' => self::pngUpload()]);
 
@@ -417,7 +417,7 @@ final class ProductControllerTest extends WebTestCase
      */
     public function testUploadReturnsUnprocessableForInvalidContent(): void
     {
-        $this->productService->method('setImage')->willThrowException(new InvalidImageException('O arquivo deve ser uma imagem JPG, PNG, WebP ou GIF.'));
+        $this->productService->expects($this->once())->method('setImage')->willThrowException(new InvalidImageException('O arquivo deve ser uma imagem JPG, PNG, WebP ou GIF.'));
 
         $this->client->request('POST', '/api/products/7/image', files: ['image' => self::pngUpload()]);
 
@@ -446,7 +446,7 @@ final class ProductControllerTest extends WebTestCase
      */
     public function testDeleteImageReturnsNotFound(): void
     {
-        $this->productService->method('removeImage')->willThrowException(new ProductNotFoundException(99));
+        $this->productService->expects($this->once())->method('removeImage')->with(99)->willThrowException(new ProductNotFoundException(99));
 
         self::assertSame(404, $this->request('DELETE', '/api/products/99/image')['status']);
     }

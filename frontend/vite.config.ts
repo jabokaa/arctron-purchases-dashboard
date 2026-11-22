@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
@@ -17,5 +18,11 @@ export default defineConfig({
       // Imagens enviadas para os produtos
       '/uploads': apiTarget,
     },
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    // Mesmo fuso em qualquer máquina, para os testes de data/hora não dependerem do ambiente
+    env: { TZ: 'America/Sao_Paulo' },
   },
 })

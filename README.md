@@ -63,24 +63,52 @@ em `backend/.env.local` ou numa variável de ambiente.
 docker compose logs -f worker   # acompanhar o processamento dos pedidos
 ```
 
-**Para testar sem montar nada**, a pasta [`woocommerce/`](woocommerce/README.md) sobe uma loja WooCommerce de
-desenvolvimento (WordPress + WooCommerce + campos de CPF/CNPJ + produtos + este webhook já configurado). Ela é
-incluída no `docker-compose.yml` da raiz, então o mesmo `docker compose up -d` sobe tudo; a loja fica em
-http://localhost:8081 (admin / admin).
+### Loja WooCommerce de desenvolvimento
 
-É configuração **só de desenvolvimento** (senhas fracas e um mu-plugin que libera o webhook para hosts internos).
+**Para testar sem montar nada**, a pasta `woocommerce/` sobe uma loja WooCommerce de desenvolvimento
+(WordPress + WooCommerce + campos de CPF/CNPJ + produtos + este webhook já configurado). O `docker-compose.yml`
+dela é incluído (`include:`) pelo da raiz, então o mesmo `docker compose up -d` sobe tudo, na mesma rede (a loja
+chama o backend em `http://backend:8000`). A loja fica em http://localhost:8081 (admin / admin).
+
+É configuração **só de desenvolvimento**: senhas fracas e um mu-plugin (`woocommerce/mu-plugins/dev-webhooks.php`)
+que libera o webhook para hosts internos e para a porta 8000, e entrega os webhooks na hora. **Não use em produção.**
+
+| Arquivo | Para quê |
+|---|---|
+| `woocommerce/.env` | Porta, login do admin, banco e o webhook (URL e segredo) |
+| `woocommerce/scripts/setup.sh` | Instala WordPress (pt_BR), WooCommerce e o plugin Brazilian Market (campos de CPF/CNPJ), configura a loja (BRL, pagamento na entrega), cadastra o catálogo e cria o webhook **Pedido criado**. Pode rodar de novo sem duplicar |
+| `woocommerce/scripts/catalog.php` | Categorias e os 11 produtos do catálogo do painel (SKU = código interno, ex.: `CHU-001`) |
+| `woocommerce/scripts/create-test-order.php` | Cria um pedido de teste com CPF ou CNPJ, sem passar pelo checkout |
+| `woocommerce/theme/` | Tema filho do Twenty Twenty-Five usado na loja |
+
+**Testar o fluxo completo**: pelo checkout (http://localhost:8081, finalizar com "Pagamento na entrega" e CPF ou
+CNPJ) ou, mais rápido, pelo script:
+
+```bash
+docker compose run --rm wp_cli php /usr/local/bin/wp eval-file /scripts/create-test-order.php cpf
+docker compose run --rm wp_cli php /usr/local/bin/wp eval-file /scripts/create-test-order.php cnpj
+```
+
+O pedido vira uma compra com código `WC-<número do pedido>` (canal `WOOCOMMERCE`) e aparece na tela **Compras**
+do painel. Se algo falhar, veja *WooCommerce → Status → Logs* (`webhooks-delivery`) no wp-admin e a tabela
+`integration_events` do backend (`processed`, `ignored` ou `failed`, com o motivo).
+
+O produto do pedido é procurado primeiro pelo id do produto no WooCommerce e, se ainda não for conhecido, pelo
+SKU (código interno do catálogo). Um produto sem SKU, ou com SKU fora do catálogo, vira um produto novo no painel.
+
+O `WOO_WEBHOOK_SECRET` (`woocommerce/.env`) **precisa ser igual** ao `WOOCOMMERCE_WEBHOOK_SECRET`
+(`backend/.env`). Se mudar um, mude o outro e recrie o webhook com `docker compose up --force-recreate wp_cli`.
+
+```bash
+docker compose rm -sf wordpress woo_db wp_cli && docker volume rm arctron-purchases-dashboard_woo_db_data arctron-purchases-dashboard_wp_data
+                                # apaga a loja do zero (o painel continua)
+docker compose down -v          # apaga tudo, inclusive o banco do painel
+```
 
 ## Login
 
-Depois de subir o projeto, rode as migrations e o seeder do usuário padrão:
-
-```bash
-docker compose exec backend php bin/console doctrine:migrations:migrate --no-interaction
-docker compose exec backend php bin/console doctrine:fixtures:load --append --group=users
-```
-
-> Use sempre `--append`: sem ele o Doctrine apaga **todas** as tabelas antes de rodar o seeder.
-> O seeder não duplica: se o usuário já existe, nada muda.
+O usuário padrão já é criado pelas migrations na primeira subida (veja [Subir o projeto](#subir-o-projeto)),
+então não é preciso rodar nada.
 
 | Usuário padrão | |
 |---|---|
@@ -118,7 +146,9 @@ fixo recebe `403`). A regra fica no `access_control` do `backend/config/packages
 
 ## Produtos de teste
 
-Seeder com 11 artigos de futebol (chuteiras, bolas, luvas, camisas da Seleção Brasileira...), com imagem:
+Seeder com 11 artigos de futebol (chuteiras, bolas, luvas, camisas da Seleção Brasileira...), com imagem.
+Já roda nas migrations da primeira subida; para rodar de novo à mão (use sempre `--append`: sem ele o Doctrine
+apaga **todas** as tabelas):
 
 ```bash
 docker compose exec backend php bin/console doctrine:fixtures:load --append --group=products
@@ -140,7 +170,8 @@ As imagens são fotos com licença livre do Wikimedia Commons; autor e licença 
 ## Compras de teste
 
 Seeder com 40 compras dos últimos ~4 meses, de 8 clientes (pessoas físicas e empresas) e com os produtos acima,
-algumas com desconto. É o que enche o dashboard, os rankings e o gráfico:
+algumas com desconto. É o que enche o dashboard, os rankings e o gráfico. Também já roda nas migrations da
+primeira subida; para rodar de novo à mão:
 
 ```bash
 docker compose exec backend php bin/console doctrine:fixtures:load --append --group=purchases
@@ -166,10 +197,21 @@ Os arquivos ficam em `backend/public/uploads/` (fora do git) e são apagados jun
 
 ## Testes
 
+Backend (PHPUnit):
+
 ```bash
 docker compose exec backend php bin/phpunit --testsuite unit          # sem banco (mocks/stubs)
 docker compose exec backend php bin/phpunit --testsuite integration   # banco de teste real (app_test)
 docker compose exec backend php bin/phpunit --coverage-text           # todos, com cobertura
+```
+
+Frontend (Vitest + Testing Library, em jsdom): formatação de valores, datas e documentos (`src/lib/format.test.ts`),
+montagem dos filtros e tratamento de erros da API (`src/services/purchases.test.ts`) e o componente de paginação
+(`src/components/Pagination.test.tsx`).
+
+```bash
+docker compose exec frontend npm test             # roda uma vez
+docker compose exec frontend npm run test:watch   # reexecuta ao salvar
 ```
 
 ## Comandos úteis
