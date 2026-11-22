@@ -5,26 +5,37 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\CustomerRepository;
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * Cliente que realiza compras.
- * Os documentos (CPF, CNPJ...) ficam em CustomerDocument, pois um cliente pode ter mais de um.
+ * Cliente que realiza compras. Classe base (abstrata) dos dois tipos de cliente:
+ * - IndividualCustomer: pessoa física (CPF)
+ * - CompanyCustomer: pessoa jurídica (CNPJ)
+ *
+ * Herança JOINED (Class Table Inheritance): os campos comuns ficam na tabela customers
+ * e os campos de cada tipo ficam em individual_customers / company_customers (relação 1:1 pelo id).
+ * A coluna person_type (discriminador) diz ao Doctrine de qual tipo é cada registro.
  */
 #[ORM\Entity(repositoryClass: CustomerRepository::class)]
-#[ORM\Table(name: 'customers', options: ['comment' => 'Clientes que realizam compras'])]
+#[ORM\Table(name: 'customers', options: ['comment' => 'Clientes que realizam compras (campos comuns a pessoa física e jurídica)'])]
+#[ORM\InheritanceType('JOINED')]
+#[ORM\DiscriminatorColumn(
+    name: 'person_type',
+    type: 'string',
+    length: 20,
+    options: ['comment' => 'Tipo do cliente: INDIVIDUAL (pessoa física) ou COMPANY (pessoa jurídica)'],
+)]
+#[ORM\DiscriminatorMap([
+    IndividualCustomer::TYPE => IndividualCustomer::class,
+    CompanyCustomer::TYPE => CompanyCustomer::class,
+])]
 #[ORM\HasLifecycleCallbacks]
-class Customer
+abstract class Customer
 {
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]
     private ?int $id = null;
-
-    #[ORM\Column(length: 255, options: ['comment' => 'Nome do cliente'])]
-    private string $name;
 
     #[ORM\Column(length: 255, nullable: true, options: ['comment' => 'E-mail de contato do cliente (opcional)'])]
     private ?string $email = null;
@@ -35,14 +46,20 @@ class Customer
     #[ORM\Column(options: ['comment' => 'Data da última atualização do registro'])]
     private \DateTimeImmutable $updatedAt;
 
-    /** @var Collection<int, CustomerDocument> */
-    #[ORM\OneToMany(targetEntity: CustomerDocument::class, mappedBy: 'customer', cascade: ['persist'], orphanRemoval: true)]
-    private Collection $documents;
+    /** Tipo do cliente (valor do discriminador): INDIVIDUAL ou COMPANY */
+    abstract public function getType(): string;
 
-    public function __construct()
-    {
-        $this->documents = new ArrayCollection();
-    }
+    /** Nome para exibição: nome da pessoa ou razão social da empresa */
+    abstract public function getName(): string;
+
+    /** Grava o nome no campo do tipo: fullName (pessoa física) ou legalName (pessoa jurídica) */
+    abstract public function setName(string $name): static;
+
+    /** Documento sem máscara: CPF ou CNPJ */
+    abstract public function getDocument(): string;
+
+    /** Grava o documento no campo do tipo: cpf (pessoa física) ou cnpj (pessoa jurídica) */
+    abstract public function setDocument(string $document): static;
 
     #[ORM\PrePersist]
     public function onPrePersist(): void
@@ -60,18 +77,6 @@ class Customer
     public function getId(): ?int
     {
         return $this->id;
-    }
-
-    public function getName(): string
-    {
-        return $this->name;
-    }
-
-    public function setName(string $name): static
-    {
-        $this->name = $name;
-
-        return $this;
     }
 
     public function getEmail(): ?string
@@ -94,28 +99,5 @@ class Customer
     public function getUpdatedAt(): \DateTimeImmutable
     {
         return $this->updatedAt;
-    }
-
-    /** @return Collection<int, CustomerDocument> */
-    public function getDocuments(): Collection
-    {
-        return $this->documents;
-    }
-
-    public function addDocument(CustomerDocument $document): static
-    {
-        if (!$this->documents->contains($document)) {
-            $this->documents->add($document);
-            $document->setCustomer($this);
-        }
-
-        return $this;
-    }
-
-    public function removeDocument(CustomerDocument $document): static
-    {
-        $this->documents->removeElement($document);
-
-        return $this;
     }
 }

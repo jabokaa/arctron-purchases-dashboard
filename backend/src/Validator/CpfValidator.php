@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Validator;
 
+use App\Util\DocumentNumber;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
@@ -40,7 +41,7 @@ final class CpfValidator extends ConstraintValidator
     public static function isValid(string $cpf): bool
     {
         // Remove a máscara (pontos, traço, espaços)
-        $digits = preg_replace('/\D/', '', $cpf);
+        $digits = DocumentNumber::onlyDigits($cpf);
 
         // Precisa ter 11 dígitos e não pode ser todos iguais (ex.: 111.111.111-11)
         if (11 !== \strlen($digits) || preg_match('/^(\d)\1{10}$/', $digits)) {

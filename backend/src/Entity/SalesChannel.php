@@ -19,6 +19,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\UniqueConstraint(name: 'uniq_sales_channels_code', columns: ['code'])]
 class SalesChannel
 {
+    /** Canal das compras recebidas pelo endpoint POST /api/purchases (cadastrado na migration de seed) */
+    public const API = 'API';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'bigint')]

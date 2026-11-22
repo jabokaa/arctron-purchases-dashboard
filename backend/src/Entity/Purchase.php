@@ -14,8 +14,8 @@ use Doctrine\ORM\Mapping as ORM;
  * Compra (pedido) feita por um cliente através de um canal de venda.
  * O referenceCode é o código único do pedido, usado para evitar duplicidade.
  *
- * Valores monetários usam DECIMAL(12,2) e são tratados como string no PHP
- * para não perder precisão (float não é seguro para dinheiro).
+ * Valores monetários são guardados em CENTAVOS como inteiro (BIGINT): 25010 = R$ 250,10.
+ * Assim não há erro de arredondamento (float não é seguro para dinheiro).
  */
 #[ORM\Entity(repositoryClass: PurchaseRepository::class)]
 #[ORM\Table(
@@ -45,11 +45,11 @@ class Purchase
     #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
     private SalesChannel $salesChannel;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['comment' => 'Valor total da compra'])]
-    private string $amount;
+    #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Valor total da compra em centavos'])]
+    private int $amount;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['default' => 0, 'comment' => 'Valor de desconto aplicado na compra'])]
-    private string $discount = '0.00';
+    #[ORM\Column(type: Types::BIGINT, options: ['default' => 0, 'comment' => 'Valor de desconto aplicado na compra em centavos'])]
+    private int $discount = 0;
 
     #[ORM\Column(options: ['comment' => 'Data e hora em que a compra foi realizada'])]
     private \DateTimeImmutable $purchasedAt;
@@ -126,24 +126,24 @@ class Purchase
         return $this;
     }
 
-    public function getAmount(): string
+    public function getAmount(): int
     {
         return $this->amount;
     }
 
-    public function setAmount(string $amount): static
+    public function setAmount(int $amount): static
     {
         $this->amount = $amount;
 
         return $this;
     }
 
-    public function getDiscount(): string
+    public function getDiscount(): int
     {
         return $this->discount;
     }
 
-    public function setDiscount(string $discount): static
+    public function setDiscount(int $discount): static
     {
         $this->discount = $discount;
 

@@ -36,11 +36,11 @@ class PurchaseItem
     #[ORM\Column(options: ['comment' => 'Quantidade do produto na compra'])]
     private int $quantity;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['comment' => 'Preço unitário do produto no momento da compra'])]
-    private string $unitPrice;
+    #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Preço unitário do produto no momento da compra, em centavos'])]
+    private int $unitPrice;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, options: ['comment' => 'Preço total do item (quantidade × preço unitário)'])]
-    private string $totalPrice;
+    #[ORM\Column(type: Types::BIGINT, options: ['comment' => 'Preço total do item (quantidade × preço unitário), em centavos'])]
+    private int $totalPrice;
 
     public function getId(): ?int
     {
@@ -83,24 +83,24 @@ class PurchaseItem
         return $this;
     }
 
-    public function getUnitPrice(): string
+    public function getUnitPrice(): int
     {
         return $this->unitPrice;
     }
 
-    public function setUnitPrice(string $unitPrice): static
+    public function setUnitPrice(int $unitPrice): static
     {
         $this->unitPrice = $unitPrice;
 
         return $this;
     }
 
-    public function getTotalPrice(): string
+    public function getTotalPrice(): int
     {
         return $this->totalPrice;
     }
 
-    public function setTotalPrice(string $totalPrice): static
+    public function setTotalPrice(int $totalPrice): static
     {
         $this->totalPrice = $totalPrice;
 

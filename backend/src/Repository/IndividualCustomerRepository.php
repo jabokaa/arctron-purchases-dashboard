@@ -4,17 +4,17 @@ declare(strict_types=1);
 
 namespace App\Repository;
 
-use App\Entity\CustomerDocument;
+use App\Entity\IndividualCustomer;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
- * @extends ServiceEntityRepository<CustomerDocument>
+ * @extends ServiceEntityRepository<IndividualCustomer>
  */
-class CustomerDocumentRepository extends ServiceEntityRepository
+class IndividualCustomerRepository extends ServiceEntityRepository
 {
     public function __construct(ManagerRegistry $registry)
     {
-        parent::__construct($registry, CustomerDocument::class);
+        parent::__construct($registry, IndividualCustomer::class);
     }
 }
