@@ -122,11 +122,12 @@ final class PurchaseFilterInput
         try {
             $date = new \DateTimeImmutable($value, new \DateTimeZone('UTC'));
         } catch (\Exception) {
-            return null; // ex.: 2026-02-30 tem o formato certo, mas não existe
+            return null; // valores que o PHP não consegue ler, ex.: mês 13 (2026-13-01) ou hora 25 (2026-11-21T25:00)
         }
 
-        // Garante que a data existe de verdade (o PHP transformaria 2026-02-30 em 2026-03-02)
-        if ($date->format('Y-m-d') !== substr($value, 0, 10) && self::isDateOnly($value)) {
+        // Garante que o dia existe de verdade: o PHP não dá erro para 2026-02-30, ele vira 2026-03-02 em silêncio.
+        // Vale com ou sem hora (antes de converter para UTC, a data ainda está no fuso informado).
+        if ($date->format('Y-m-d') !== substr($value, 0, 10)) {
             return null;
         }
 
