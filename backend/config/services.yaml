@@ -27,3 +27,9 @@ services:
 when@test:
     parameters:
         app.product_images_dir: '%kernel.project_dir%/var/test-uploads/products'
+
+    services:
+        # Sem Monolog, o logger padrão do Symfony escreve no stderr: cada teste que provoca um 4xx/5xx de propósito
+        # imprimiria "[error] Uncaught PHP Exception ..." no meio da saída do PHPUnit. Nos testes, os logs são descartados.
+        logger:
+            class: Psr\Log\NullLogger
