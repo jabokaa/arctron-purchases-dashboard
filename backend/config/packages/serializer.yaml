@@ -1,0 +1,5 @@
+framework:
+    serializer:
+        # O JSON da API usa snake_case (reference_code) e as classes PHP usam camelCase (referenceCode).
+        # Este conversor faz a tradução automática nos dois sentidos (requisição e resposta).
+        name_converter: 'serializer.name_converter.camel_case_to_snake_case'
