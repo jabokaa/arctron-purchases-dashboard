@@ -134,6 +134,7 @@ final class ApiExceptionListener
             !$exception->getPrevious() instanceof \DomainException && '' === trim($requestBody) && $status < 500 && \in_array($status, [Response::HTTP_BAD_REQUEST, Response::HTTP_UNPROCESSABLE_ENTITY], true) => 'O corpo da requisição é obrigatório.',
             str_starts_with($message, 'Request payload contains invalid') => 'O corpo da requisição não é um JSON válido.',
             str_starts_with($message, 'Unsupported format') => 'Formato não suportado. Envie o corpo em JSON com o cabeçalho "Content-Type: application/json".',
+            Response::HTTP_FORBIDDEN === $status => 'Você não tem permissão para acessar este recurso.',
             Response::HTTP_METHOD_NOT_ALLOWED === $status => 'Método HTTP não permitido para esta rota.',
             str_starts_with($message, 'No route found') => 'Rota não encontrada.',
             // Parâmetro da URL que não cabe no tipo esperado, ex.: id maior que o maior inteiro

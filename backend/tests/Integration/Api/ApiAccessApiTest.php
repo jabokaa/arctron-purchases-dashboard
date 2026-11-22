@@ -13,9 +13,10 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 /**
  * Testes do controle de acesso das rotas /api (access_control do security.yaml).
  *
- * O que é testado: todas as rotas /api exigem o token do login, exceto o próprio login e o webhook do
- * WooCommerce (que se autentica pela assinatura do corpo). Sem token, com token inválido ou depois do logout
- * a resposta é 401 em JSON; com um token válido a rota responde normalmente.
+ * O que é testado: todas as rotas /api exigem UMA de duas formas de acesso: usuário logado (token do login) ou
+ * token fixo do .env (API_ACCESS_TOKEN). Exceções: o próprio login e o webhook do WooCommerce (que se autentica
+ * pela assinatura do corpo). Sem token, com token inválido ou depois do logout a resposta é 401 em JSON;
+ * com um token válido a rota responde normalmente. As rotas de sessão (/me e /logout) são só do usuário logado.
  *
  * Como é testado: fluxo completo, sem mocks, no banco de teste. O cliente começa SEM token.
  */
@@ -23,6 +24,8 @@ final class ApiAccessApiTest extends IntegrationTestCase
 {
     private const EMAIL = 'admin@cbf.com.br';
     private const PASSWORD = 'senha-secreta';
+    // Mesmo valor do API_ACCESS_TOKEN em .env.test
+    private const API_ACCESS_TOKEN = 'test-api-access-token';
 
     protected bool $authenticated = false;
 
@@ -128,6 +131,45 @@ final class ApiAccessApiTest extends IntegrationTestCase
 
         self::assertSame(204, $this->call('POST', '/api/auth/logout', token: $token)['status']);
         self::assertSame(401, $this->call('GET', '/api/products', token: $token)['status']);
+    }
+
+    /**
+     * Token fixo do .env nas rotas de produtos, compras e relatórios, inclusive para gravar.
+     * Espera 200/201 e, no caso do POST, o dado gravado no banco (acesso sem usuário logado).
+     */
+    public function testApiAccessTokenGrantsAccess(): void
+    {
+        foreach (['/api/products', '/api/purchases', '/api/reports/summary', '/api/reports/timeline', '/api/reports/customers', '/api/reports/products'] as $url) {
+            self::assertSame(200, $this->call('GET', $url, token: self::API_ACCESS_TOKEN)['status'], $url);
+        }
+
+        $created = $this->call('POST', '/api/products', ['name' => 'Bola'], self::API_ACCESS_TOKEN);
+
+        self::assertSame(201, $created['status']);
+        self::assertSame(1, $this->countRows('products'));
+    }
+
+    /**
+     * Token fixo do .env nas rotas de sessão do usuário.
+     * Espera 403: /api/auth/me e /logout só fazem sentido para quem fez login.
+     */
+    public function testApiAccessTokenCannotUseSessionRoutes(): void
+    {
+        $me = $this->call('GET', '/api/auth/me', token: self::API_ACCESS_TOKEN);
+        self::assertSame(403, $me['status']);
+        self::assertSame('Acesso negado', $me['body']['title']);
+        self::assertSame('Você não tem permissão para acessar este recurso.', $me['body']['detail']);
+
+        self::assertSame(403, $this->call('POST', '/api/auth/logout', token: self::API_ACCESS_TOKEN)['status']);
+    }
+
+    /**
+     * Token parecido com o do .env, mas diferente.
+     * Espera 401.
+     */
+    public function testWrongApiAccessTokenIsRejected(): void
+    {
+        self::assertSame(401, $this->call('GET', '/api/products', token: self::API_ACCESS_TOKEN.'x')['status']);
     }
 
     /**

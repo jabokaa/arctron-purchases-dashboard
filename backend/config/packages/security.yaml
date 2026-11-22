@@ -31,15 +31,19 @@ security:
             lazy: true
             provider: app_user_provider
 
-    # Só a primeira regra que bate com a URL é aplicada. Todas as rotas /api exigem o token do login
-    # (Authorization: Bearer ...), exceto:
+    # Só a primeira regra que bate com a URL é aplicada. As rotas /api têm duas formas de acesso:
+    # - usuário logado: token do POST /api/auth/login, no cabeçalho Authorization (Bearer);
+    # - cliente da API: token fixo do .env (API_ACCESS_TOKEN), enviado do mesmo jeito.
+    # Exceções:
     # - o próprio login;
     # - o webhook do WooCommerce, que não tem como enviar o token: ele se autentica pela assinatura
-    #   HMAC do corpo (X-WC-Webhook-Signature), conferida no controller (401 se for inválida).
+    #   HMAC do corpo (X-WC-Webhook-Signature), conferida no controller (401 se for inválida);
+    # - /api/auth/me e /logout, que só fazem sentido para o usuário logado (o cliente da API recebe 403).
     access_control:
         - { path: ^/api/auth/login$, roles: PUBLIC_ACCESS }
         - { path: ^/api/webhooks/, roles: PUBLIC_ACCESS }
-        - { path: ^/api, roles: ROLE_USER }
+        - { path: ^/api/auth/(me|logout)$, roles: ROLE_USER }
+        - { path: ^/api, roles: [ROLE_USER, ROLE_API_CLIENT] }
 
 when@test:
     security:

@@ -74,11 +74,22 @@ Os dados vêm de `DEFAULT_USER_NAME`, `DEFAULT_USER_EMAIL` e `DEFAULT_USER_PASSW
 O token vale `AUTH_TOKEN_TTL` segundos (padrão 8 h) e é enviado como `Authorization: Bearer <token>`.
 No banco fica só o hash SHA-256 do token. O front chama `/api` pelo proxy do Vite (sem CORS).
 
-**Todas as rotas `/api` exigem o token** (sem ele, ou com token inválido/expirado: `401` em JSON). As únicas exceções
-são o `POST /api/auth/login` e o `POST /api/webhooks/woocommerce`, que não tem como enviar o token e se autentica
-pela assinatura HMAC do corpo (`401` se for inválida). A regra fica no `access_control` do
-`backend/config/packages/security.yaml`. As imagens em `/uploads/...` são arquivos estáticos e continuam abertas
-(para o `<img>` funcionar).
+**Todas as rotas `/api` têm duas formas de acesso**, enviadas no cabeçalho `Authorization: Bearer <token>`:
+
+1. **usuário logado**: o token devolvido pelo `POST /api/auth/login` (é o que o front usa);
+2. **token fixo do `.env`**: o valor de `API_ACCESS_TOKEN` (`backend/.env`), para outros sistemas chamarem a API sem
+   login. Em desenvolvimento é `dev-api-access-token`; em produção gere um valor longo e aleatório
+   (`openssl rand -hex 32`) e defina em `backend/.env.local` ou numa variável de ambiente. Vazio desliga essa forma.
+
+```bash
+curl http://localhost:8088/api/products -H "Authorization: Bearer dev-api-access-token"
+```
+
+Sem token, ou com token inválido/expirado: `401` em JSON. Exceções: o `POST /api/auth/login`; o
+`POST /api/webhooks/woocommerce`, que não tem como enviar o token e se autentica pela assinatura HMAC do corpo
+(`401` se for inválida); e `GET /api/auth/me` e `POST /api/auth/logout`, que são só do usuário logado (o token
+fixo recebe `403`). A regra fica no `access_control` do `backend/config/packages/security.yaml`. As imagens em
+`/uploads/...` são arquivos estáticos e continuam abertas (para o `<img>` funcionar).
 
 ## Produtos de teste
 
