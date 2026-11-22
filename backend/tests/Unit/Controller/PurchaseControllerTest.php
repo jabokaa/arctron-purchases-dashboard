@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\Controller;
+namespace App\Tests\Unit\Controller;
 
 use App\Dto\PurchaseInput;
 use App\Entity\IndividualCustomer;
