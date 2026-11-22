@@ -1,0 +1,73 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/theme.json",
+	"version": 3,
+	"settings": {
+		"appearanceTools": true,
+		"color": {
+			"palette": [
+				{ "name": "Fundo", "slug": "base", "color": "#FFFFFF" },
+				{ "name": "Texto", "slug": "contrast", "color": "#0F1A14" },
+				{ "name": "Amarelo", "slug": "accent-1", "color": "#F7C600" },
+				{ "name": "Verde claro", "slug": "accent-2", "color": "#E3F4EA" },
+				{ "name": "Verde", "slug": "accent-3", "color": "#0B6B43" },
+				{ "name": "Texto secundário", "slug": "accent-4", "color": "#59655E" },
+				{ "name": "Superfície", "slug": "accent-5", "color": "#F4F6F3" },
+				{ "name": "Borda", "slug": "accent-6", "color": "#E2E7E3" },
+				{ "name": "Verde escuro", "slug": "pitch", "color": "#06311F" }
+			]
+		},
+		"layout": {
+			"contentSize": "760px",
+			"wideSize": "1240px"
+		}
+	},
+	"styles": {
+		"color": {
+			"background": "var:preset|color|base",
+			"text": "var:preset|color|contrast"
+		},
+		"typography": {
+			"fontFamily": "var:preset|font-family|manrope",
+			"fontSize": "var:preset|font-size|medium",
+			"fontWeight": "400",
+			"lineHeight": "1.6"
+		},
+		"elements": {
+			"heading": {
+				"typography": {
+					"fontWeight": "800",
+					"letterSpacing": "-0.02em",
+					"lineHeight": "1.15"
+				}
+			},
+			"link": {
+				"color": { "text": "var:preset|color|accent-3" },
+				"typography": { "textDecoration": "none" },
+				":hover": {
+					"typography": { "textDecoration": "underline" }
+				}
+			},
+			"button": {
+				"color": {
+					"background": "var:preset|color|accent-3",
+					"text": "var:preset|color|base"
+				},
+				"border": { "radius": "999px" },
+				"typography": { "fontWeight": "700", "fontSize": "var:preset|font-size|small" },
+				"spacing": { "padding": { "top": "0.85em", "bottom": "0.85em", "left": "1.6em", "right": "1.6em" } },
+				":hover": {
+					"color": {
+						"background": "var:preset|color|pitch",
+						"text": "var:preset|color|base"
+					}
+				},
+				":focus": {
+					"color": {
+						"background": "var:preset|color|pitch",
+						"text": "var:preset|color|base"
+					}
+				}
+			}
+		}
+	}
+}

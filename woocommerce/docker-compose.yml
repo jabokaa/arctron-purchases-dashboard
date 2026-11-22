@@ -1,0 +1,85 @@
+# WooCommerce de DESENVOLVIMENTO.
+#
+# Sobe uma loja pronta (WordPress + WooCommerce + campo de CPF/CNPJ + produtos + webhook apontando para o backend).
+# É incluído pelo docker-compose.yml da raiz (include:), então sobe junto com tudo:
+#   docker compose up -d        (na raiz do repositório)
+# As variáveis ${WOO_*} vêm do woocommerce/.env (o include usa o .env da pasta do arquivo incluído).
+
+services:
+  woo_db:
+    image: mariadb:11
+    environment:
+      MARIADB_DATABASE: ${WOO_DB_NAME}
+      MARIADB_USER: ${WOO_DB_USER}
+      MARIADB_PASSWORD: ${WOO_DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${WOO_DB_ROOT_PASSWORD}
+    volumes:
+      - woo_db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  wordpress:
+    # A versão mais recente: o WooCommerce atual exige o WordPress mais novo
+    image: wordpress:php8.3-apache
+    depends_on:
+      woo_db:
+        condition: service_healthy
+    environment:
+      WORDPRESS_DB_HOST: woo_db
+      WORDPRESS_DB_NAME: ${WOO_DB_NAME}
+      WORDPRESS_DB_USER: ${WOO_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WOO_DB_PASSWORD}
+      # Fixa o endereço do site (sem isso o WordPress redireciona para a URL gravada no banco)
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_HOME', '${WOO_URL}');
+        define('WP_SITEURL', '${WOO_URL}');
+        // Desenvolvimento do tema: lê theme/ sem cache, então editar um arquivo aparece ao recarregar a página
+        define('WP_DEVELOPMENT_MODE', 'theme');
+    ports:
+      - "${WOO_PORT}:80"
+    volumes:
+      - wp_data:/var/www/html
+      # Só desenvolvimento: libera o webhook para o backend (ver o arquivo)
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      # Visual da loja (tema filho do Twenty Twenty-Five)
+      - ./theme:/var/www/html/wp-content/themes/arctron-loja:ro
+
+  # Roda o setup.sh uma vez (instala e configura a loja) e encerra. Pode rodar de novo sem duplicar nada.
+  wp_cli:
+    image: wordpress:cli-php8.3
+    user: "33:33" # mesmo usuário (www-data) do container wordpress, dono dos arquivos
+    depends_on:
+      woo_db:
+        condition: service_healthy
+      wordpress:
+        condition: service_started
+    restart: "no"
+    command: sh /scripts/setup.sh
+    environment:
+      HOME: /tmp
+      # O wp-config.php do WordPress lê o banco destas variáveis (as mesmas do serviço wordpress)
+      WORDPRESS_DB_HOST: woo_db
+      WORDPRESS_DB_NAME: ${WOO_DB_NAME}
+      WORDPRESS_DB_USER: ${WOO_DB_USER}
+      WORDPRESS_DB_PASSWORD: ${WOO_DB_PASSWORD}
+      WP_CLI_CACHE_DIR: /tmp/wp-cli-cache
+      WOO_URL: ${WOO_URL}
+      WOO_ADMIN_USER: ${WOO_ADMIN_USER}
+      WOO_ADMIN_PASSWORD: ${WOO_ADMIN_PASSWORD}
+      WOO_ADMIN_EMAIL: ${WOO_ADMIN_EMAIL}
+      WOO_WEBHOOK_URL: ${WOO_WEBHOOK_URL}
+      WOO_WEBHOOK_SECRET: ${WOO_WEBHOOK_SECRET}
+    volumes:
+      - wp_data:/var/www/html
+      - ./scripts:/scripts:ro
+      - ./mu-plugins:/var/www/html/wp-content/mu-plugins:ro
+      - ./theme:/var/www/html/wp-content/themes/arctron-loja:ro
+      # Fotos dos produtos: as mesmas do seeder do backend
+      - ../backend/src/DataFixtures/images/products:/products:ro
+
+volumes:
+  woo_db_data:
+  wp_data:

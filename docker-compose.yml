@@ -1,3 +1,8 @@
+# Loja WooCommerce de desenvolvimento (woocommerce/docker-compose.yml, com o próprio .env).
+# Entra no mesmo projeto e na mesma rede: chama o webhook em http://backend:8000
+include:
+  - path: ./woocommerce/docker-compose.yml
+
 services:
   database:
     image: postgres:16-alpine

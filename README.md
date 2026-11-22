@@ -5,8 +5,9 @@ Stack: **Symfony** (backend) · **PostgreSQL** (banco) · **RabbitMQ** (fila) ·
 ## Estrutura
 
 ```
-backend/   Symfony 8 (Doctrine ORM, Messenger)
-frontend/  React + Vite + TypeScript + Tailwind CSS 4 (fonte Inter, ícones Lucide)
+backend/      Symfony 8 (Doctrine ORM, Messenger)
+frontend/     React + Vite + TypeScript + Tailwind CSS 4 (fonte Inter, ícones Lucide)
+woocommerce/  WooCommerce de desenvolvimento (incluído no docker-compose.yml), para testar o webhook
 docker-compose.yml
 ```
 
@@ -44,6 +45,13 @@ em `backend/.env.local` ou numa variável de ambiente.
 ```bash
 docker compose logs -f worker   # acompanhar o processamento dos pedidos
 ```
+
+**Para testar sem montar nada**, a pasta [`woocommerce/`](woocommerce/README.md) sobe uma loja WooCommerce de
+desenvolvimento (WordPress + WooCommerce + campos de CPF/CNPJ + produtos + este webhook já configurado). Ela é
+incluída no `docker-compose.yml` da raiz, então o mesmo `docker compose up -d` sobe tudo; a loja fica em
+http://localhost:8081 (admin / admin).
+
+É configuração **só de desenvolvimento** (senhas fracas e um mu-plugin que libera o webhook para hosts internos).
 
 ## Login
 
