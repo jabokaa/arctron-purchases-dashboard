@@ -18,6 +18,14 @@ docker compose up -d --build
 docker compose exec backend php bin/console doctrine:migrations:migrate -n
 ```
 
+As dependências do backend (`composer install`) são instaladas no build da imagem, em `/app/vendor`, que no
+container é um volume separado da pasta local. Depois de mudar o `composer.json`/`composer.lock`, suba com `-V`
+(renova esse volume; sem ele o container continua com o `vendor/` antigo):
+
+```bash
+docker compose up -d --build -V
+```
+
 | Serviço    | Endereço                                   |
 |------------|--------------------------------------------|
 | Backend    | http://localhost:8088                      |

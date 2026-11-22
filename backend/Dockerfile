@@ -19,5 +19,18 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
+# Dependências instaladas no build, em /app/vendor.
+# Só os arquivos do Composer entram primeiro: enquanto eles não mudam, o Docker reaproveita esta camada.
+# --no-scripts: os scripts do Symfony (cache:clear, assets:install) precisam do código e do .env; o cache é
+# gerado sozinho quando a aplicação sobe.
+# No docker-compose.yml o /app/vendor é um volume próprio, para a pasta local (./backend:/app) não esconder
+# o vendor/ da imagem. Depois de mudar as dependências: docker compose up -d --build -V
+COPY composer.json composer.lock symfony.lock ./
+RUN --mount=type=cache,target=/root/.composer/cache \
+    composer install --no-interaction --no-progress --prefer-dist --no-scripts --no-autoloader
+
+COPY . .
+RUN composer dump-autoload --no-interaction
+
 EXPOSE 8000
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public"]

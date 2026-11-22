@@ -1,0 +1,8 @@
+# Fora da imagem: o vendor/ é instalado no build (Dockerfile) e o resto é gerado em execução
+vendor/
+var/
+public/uploads/
+public/bundles/
+.phpunit.cache/
+.env.local
+.env.*.local
