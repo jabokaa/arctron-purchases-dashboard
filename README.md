@@ -33,10 +33,15 @@ docker compose up -d --build -V
 | Serviço    | Endereço                                   |
 |------------|--------------------------------------------|
 | Backend    | http://localhost:8088                      |
-| Frontend   | http://localhost:5173                      |
+| Frontend   | http://localhost:5173 (`admin@cbf.com.br` / `cbf@2026`) |
+| Loja (WooCommerce) | http://localhost:8081 · admin http://localhost:8081/wp-admin (admin/admin) |
 | PostgreSQL | localhost:5432 (app/app, db `app`)         |
+| MariaDB da loja | localhost:3308 (wordpress/wordpress, db `wordpress`) |
 | RabbitMQ   | localhost:5672 · painel http://localhost:15672 (guest/guest) |
 | Worker     | container `worker` (consome a fila do RabbitMQ) |
+
+Na primeira subida a loja leva alguns minutos para ficar pronta (o container `wp_cli` instala e configura tudo):
+acompanhe com `docker compose logs -f wp_cli`, que termina com "Pronto!".
 
 ## Webhook do WooCommerce
 
