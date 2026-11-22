@@ -92,6 +92,19 @@ então uma compra pelo `POST /api/purchases` com `"external_id": "CHU-001"` usa 
 As imagens são fotos com licença livre do Wikimedia Commons; autor e licença de cada uma estão em
 `backend/src/DataFixtures/ProductFixtures.php`.
 
+## Compras de teste
+
+Seeder com 40 compras dos últimos ~4 meses, de 8 clientes (pessoas físicas e empresas) e com os produtos acima,
+algumas com desconto. É o que enche o dashboard, os rankings e o gráfico:
+
+```bash
+docker compose exec backend php bin/console doctrine:fixtures:load --append --group=purchases
+```
+
+As compras passam pelo mesmo service do `POST /api/purchases` e têm código de referência fixo (`SEED-001`...);
+quem já existe é pulado, então pode rodar de novo sem duplicar. O seeder cadastra antes os produtos do
+catálogo, se faltarem. Os dados são fixos (nada aleatório), com datas contadas a partir de hoje.
+
 CRUD do catálogo: `GET/POST /api/products` e `GET/PUT/DELETE /api/products/{id}`
 (campos `name` e `internal_code`; produto que já foi vendido não pode ser removido).
 
